@@ -28,6 +28,7 @@
         "node-vault": "^0.10.2",
         "opossum": "^8.1.0",
         "pg": "^8.11.3",
+        "uuid": "^13.0.0",
         "validator": "^13.11.0",
         "winston": "^3.11.0"
     },
@@ -37,6 +38,7 @@
         "@types/node": "^20.10.5",
         "@types/opossum": "^8.1.9",
         "@types/pg": "^8.10.9",
+        "@types/uuid": "^10.0.0",
         "@types/validator": "^13.11.7",
         "@typescript-eslint/eslint-plugin": "^6.15.0",
         "@typescript-eslint/parser": "^6.15.0",
