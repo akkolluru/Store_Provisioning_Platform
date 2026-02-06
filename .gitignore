@@ -6,3 +6,6 @@ coverage/
 .DS_Store
 *.test.js
 *.test.d.ts
+
+# Local credentials (NEVER commit)
+LOCAL_CREDENTIALS.md
