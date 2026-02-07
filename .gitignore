@@ -9,3 +9,6 @@ coverage/
 
 # Local credentials (NEVER commit)
 LOCAL_CREDENTIALS.md
+
+# Testing documentation (auto-updated, local only)
+TESTING_GUIDE.md
