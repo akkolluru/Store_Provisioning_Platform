@@ -26,9 +26,10 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: store-service-sa
       containers:
       - name: store-service
-        image: store-service:v1.0.2
+        image: store-service:v1.1.4
         imagePullPolicy: Never  # Use local image in minikube
         ports:
         - containerPort: 3000

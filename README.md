@@ -22,7 +22,39 @@ The Store Provisioning Platform automates the complete infrastructure setup for 
 ✅ **Circuit Breakers** - Fail-fast & fail-closed patterns for resilience  
 ✅ **Input Sanitization** - XSS/injection prevention with DOMPurify + Validator.js  
 ✅ **Optimistic Locking** - Prevents lost updates in high-concurrency scenarios  
-✅ **Production-Ready** - Strict TypeScript, 0 lint errors, comprehensive logging
+✅ **Production-Ready** - Strict TypeScript, 0 lint errors, comprehensive logging  
+✅ **CI/CD Pipeline** - Automated testing, building, deployment with GitHub Actions
+
+---
+
+## 🔄 CI/CD Pipeline
+
+### Workflows
+
+- **Backend CI** (`backend-ci.yml`): Runs on PRs
+  - TypeScript compilation, linting, tests, build verification
+
+- **Frontend CI** (`frontend-ci.yml`): Runs on PRs  
+  - TypeScript compilation, linting, Vite build, Lighthouse testing
+
+- **Backend CD** (`backend-cd.yml`): Runs on merge to main
+  - Docker build → Push to `ghcr.io/.../backend:latest`
+
+- **Frontend CD** (`frontend-cd.yml`): Runs on merge to main
+  - Docker build → Push to `ghcr.io/.../frontend:latest`
+
+- **Security Scan** (`security-scan.yml`): Weekly + on PRs
+  - npm audit, Trivy container scan, CodeQL analysis
+
+### Deployment
+
+```bash
+# Deploy latest images
+./scripts/deploy.sh development latest
+
+# Deploy specific version  
+./scripts/deploy.sh production v1.0.0
+```
 
 ---
 

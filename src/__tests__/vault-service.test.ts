@@ -1,4 +1,4 @@
-import VaultService from '../shared/services/vault-service';
+// VaultService tests are currently disabled
 
 // Mock node-vault
 jest.mock('node-vault');

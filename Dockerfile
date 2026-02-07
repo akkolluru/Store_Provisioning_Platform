@@ -26,8 +26,27 @@ COPY package*.json ./
 RUN npm ci --only=production && \
     npm cache clean --force
 
+# Install Helm and Kubectl (for store provisioning)
+RUN apk add --no-cache curl bash openssl && \
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 && \
+    chmod 700 get_helm.sh && \
+    ./get_helm.sh && \
+    rm get_helm.sh && \
+    ARCH=$(uname -m) && \
+    case $ARCH in \
+    x86_64) K8S_ARCH="amd64" ;; \
+    aarch64) K8S_ARCH="arm64" ;; \
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;; \
+    esac && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${K8S_ARCH}/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
+
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+
+# Copy Helm charts
+COPY helm/ ./helm/
 
 # Create non-root user for security (use existing node user)
 RUN chown -R node:node /app

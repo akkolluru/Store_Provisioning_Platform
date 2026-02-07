@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import DOMPurify from 'isomorphic-dompurify';
 import validator from 'validator';
+import HelmService from '../../shared/services/helm-service';
 import {
     StoreStatus,
     CreateStoreRequest,
@@ -109,7 +110,7 @@ router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
 
 /**
  * POST /api/stores
- * Create a new store
+ * Create a new store (provisions real WooCommerce/Medusa instance)
  */
 router.post('/stores', async (req: Request, res: Response): Promise<void> => {
     try {
@@ -129,21 +130,55 @@ router.post('/stores', async (req: Request, res: Response): Promise<void> => {
             config: value.config ? sanitizeObject(value.config) : {},
         };
 
+        // Extract engine and subdomain from config
+        const engine = (value.config?.engine as 'woocommerce' | 'medusa') || 'woocommerce';
+        const subdomain = sanitizeInput(value.config?.subdomain || sanitizedData.name.toLowerCase().replace(/\s+/g, '-'));
+
         const dbManager = getDatabaseManager();
 
         const id = uuidv4();
         const now = new Date();
 
-        const result = await dbManager.executeQuery(
-            `INSERT INTO stores (id, name, status, config, version, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+        // Step 1: Create DB record with PROVISIONING status
+        const insertResult = await dbManager.executeQuery(
+            `INSERT INTO stores (id, name, status, config, version, engine, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-            [id, sanitizedData.name, StoreStatus.PROVISIONING, JSON.stringify(sanitizedData.config), 1, now, now]
+            [id, sanitizedData.name, StoreStatus.PROVISIONING, JSON.stringify(sanitizedData.config), 1, engine, now, now]
         );
 
+        const store = insertResult.rows[0];
+
+        // Step 2: Provision store using Helm (async, don't wait)
+        // Background job - updates DB when complete
+        HelmService.installStore({
+            storeName: `store-${store.id}`,
+            subdomain,
+            engine,
+            domain: 'local',
+            environment: 'local'
+        }).then(async ({ namespace, url }) => {
+            console.log(`[Stores API] Store ${store.id} provisioned successfully at ${url}`);
+
+            // Update DB with URL and namespace
+            await dbManager.executeQuery(
+                `UPDATE stores SET url = $1, namespace = $2, status = $3, updated_at = $4 WHERE id = $5`,
+                [url, namespace, StoreStatus.READY, new Date(), store.id]
+            );
+        }).catch(async (error) => {
+            console.error(`[Stores API] Failed to provision store ${store.id}:`, error);
+
+            // Mark store as FAILED
+            await dbManager.executeQuery(
+                `UPDATE stores SET status = $1, updated_at = $2 WHERE id = $3`,
+                [StoreStatus.FAILED, new Date(), store.id]
+            );
+        });
+
+        // Immediately return PROVISIONING status
         res.status(201).json({
-            store: result.rows[0],
-            message: 'Store created successfully',
+            store,
+            message: 'Store provisioning initiated. Check status for updates.',
         });
     } catch (error) {
         console.error('Error creating store:', error);

@@ -4,9 +4,11 @@ import Joi from 'joi';
  * Store status enum
  */
 export enum StoreStatus {
-    PROVISIONING = 'PROVISIONING',
-    ACTIVE = 'ACTIVE',
-    DECOMMISSIONED = 'DECOMMISSIONED',
+    PROVISIONING = 'provisioning',
+    ACTIVE = 'active',
+    DECOMMISSIONED = 'decommissioned',
+    FAILED = 'failed',
+    READY = 'ready',
 }
 
 /**
