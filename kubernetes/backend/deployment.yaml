@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: store-service
-        image: store-service:v1.0.1
+        image: store-service:v1.0.2
         imagePullPolicy: Never  # Use local image in minikube
         ports:
         - containerPort: 3000
