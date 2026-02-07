@@ -8,6 +8,14 @@ mysql:
   persistence:
     storageClass: "do-block-storage"  # DigitalOcean example
     size: 10Gi
+  replicas: 1  # StatefulSet, consider cloud managed DB for true HA
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
 
 wordpressPersistence:
   storageClass: "do-block-storage"
@@ -24,22 +32,12 @@ ingress:
     enabled: true
     secretName: "{{ .Values.storeName }}-tls"
 
-# Production resources
+# WordPress production configuration
 wordpress:
   replicas: 2  # High availability
   resources:
     requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-
-mysql:
-  replicas: 1  # StatefulSet, consider cloud managed DB for true HA
-  resources:
-    requests:
-      cpu: 200m
+      cpu: 500m
       memory: 512Mi
     limits:
       cpu: 1000m

@@ -8,6 +8,14 @@ mysql:
   persistence:
     storageClass: "standard"  # Minikube default
     size: 2Gi  # Smaller for local
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
 
 wordpressPersistence:
   storageClass: "standard"
@@ -22,23 +30,13 @@ ingress:
   tls:
     enabled: false  # No TLS for local
 
-# Reduced resources for local
+# WordPress configuration
 wordpress:
   replicas: 1
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
-    limits:
-      cpu: 250m
+      cpu: 100m
       memory: 256Mi
-
-mysql:
-  replicas: 1
-  resources:
-    requests:
-      cpu: 50m
-      memory: 128Mi
     limits:
-      cpu: 250m
-      memory: 256Mi
+      cpu: 500m
+      memory: 512Mi
