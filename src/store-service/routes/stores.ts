@@ -9,7 +9,7 @@ import {
     createStoreSchema,
     updateStoreSchema,
 } from '../models/store';
-import DatabaseConnectionManager from '../../shared/database/connection-manager';
+import { getDatabaseManager } from '../../shared/database/db-instance';
 
 const router = Router();
 
@@ -68,19 +68,13 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
  */
 router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
     try {
-        const dbManager = new DatabaseConnectionManager({
-            primary: {
-                connectionString: process.env.DATABASE_URL || 'postgresql://localhost/store_db',
-            },
-        });
+        const dbManager = getDatabaseManager();
 
         const result = await dbManager.executeQuery(
             'SELECT * FROM stores ORDER BY created_at DESC',
             [],
             { useReplica: true } // Use replica for read operations
         );
-
-        await dbManager.close();
 
         res.status(200).json({
             stores: result.rows,
@@ -117,11 +111,7 @@ router.post('/stores', async (req: Request, res: Response): Promise<void> => {
             config: value.config ? sanitizeObject(value.config) : {},
         };
 
-        const dbManager = new DatabaseConnectionManager({
-            primary: {
-                connectionString: process.env.DATABASE_URL || 'postgresql://localhost/store_db',
-            },
-        });
+        const dbManager = getDatabaseManager();
 
         const id = uuidv4();
         const now = new Date();
@@ -132,8 +122,6 @@ router.post('/stores', async (req: Request, res: Response): Promise<void> => {
        RETURNING *`,
             [id, sanitizedData.name, StoreStatus.PROVISIONING, JSON.stringify(sanitizedData.config), 1, now, now]
         );
-
-        await dbManager.close();
 
         res.status(201).json({
             store: result.rows[0],
@@ -185,11 +173,7 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
             updateData.config = sanitizeObject(updateData.config);
         }
 
-        const dbManager = new DatabaseConnectionManager({
-            primary: {
-                connectionString: process.env.DATABASE_URL || 'postgresql://localhost/store_db',
-            },
-        });
+        const dbManager = getDatabaseManager();
 
         // Build dynamic UPDATE query
         const updates: string[] = [];
@@ -225,8 +209,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
     `;
 
         const result = await dbManager.executeQuery(query, params);
-
-        await dbManager.close();
 
         if (result.rowCount === 0) {
             res.status(409).json({
