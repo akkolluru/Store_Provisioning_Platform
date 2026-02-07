@@ -12,7 +12,7 @@ import {
     CircularProgress,
 } from '@mui/material';
 import { storeApi } from '@/services/storeApi';
-import { StoreType } from '@/types/store';
+import { StoreEngine } from '@/types/store';
 
 export default function StoreWizard() {
     const navigate = useNavigate();
@@ -23,22 +23,15 @@ export default function StoreWizard() {
     // Form state
     const [formData, setFormData] = useState({
         name: '',
-        location: '',
-        type: 'standard' as StoreType,
-        pos: 3,
-        printers: 2,
-        scanners: 5,
-        vlan: 100,
-        ip_range: '192.168.1.0/24',
+        engine: 'woocommerce' as StoreEngine,
+        subdomain: '',
     });
 
     const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
         const value = event.target.value;
         setFormData(prev => ({
             ...prev,
-            [field]: ['pos', 'printers', 'scanners', 'vlan'].includes(field)
-                ? parseInt(value) || 0
-                : value
+            [field]: value
         }));
     };
 
@@ -46,8 +39,8 @@ export default function StoreWizard() {
         event.preventDefault();
 
         // Validation
-        if (!formData.name || !formData.location) {
-            setError('Name and location are required');
+        if (!formData.name || !formData.subdomain) {
+            setError('Store name and subdomain are required');
             return;
         }
 
@@ -57,16 +50,9 @@ export default function StoreWizard() {
 
             await storeApi.create({
                 name: formData.name,
-                location: formData.location,
-                type: formData.type,
-                hardware_config: {
-                    pos: formData.pos,
-                    printers: formData.printers,
-                    scanners: formData.scanners,
-                },
-                network_config: {
-                    vlan: formData.vlan,
-                    ip_range: formData.ip_range,
+                config: {
+                    engine: formData.engine,
+                    subdomain: formData.subdomain,
                 },
             });
 
@@ -74,9 +60,12 @@ export default function StoreWizard() {
             setTimeout(() => {
                 navigate('/stores');
             }, 1500);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to create store:', err);
-            setError(err.response?.data?.message || 'Failed to create store. Please try again.');
+            const errorMessage = err instanceof Error && 'response' in err
+                ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+                : 'Failed to create store. Please try again.';
+            setError(errorMessage || 'Failed to create store. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -85,7 +74,9 @@ export default function StoreWizard() {
     if (success) {
         return (
             <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="success">Store created successfully! Redirecting...</Alert>
+                <Alert severity="success">
+                    Store provisioning initiated! Redirecting to store list...
+                </Alert>
             </Container>
         );
     }
@@ -93,10 +84,10 @@ export default function StoreWizard() {
     return (
         <Container maxWidth="md">
             <Typography variant="h4" component="h1" gutterBottom>
-                Create New Store
+                Create New E-Commerce Store
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-                Fill in the details below to provision a new store
+                Provision a new WooCommerce or Medusa store on Kubernetes
             </Typography>
 
             <Paper sx={{ p: 3 }}>
@@ -108,7 +99,7 @@ export default function StoreWizard() {
                     )}
 
                     <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-                        Basic Information
+                        Store Configuration
                     </Typography>
 
                     <TextField
@@ -118,89 +109,36 @@ export default function StoreWizard() {
                         onChange={handleChange('name')}
                         margin="normal"
                         required
-                        placeholder="e.g., Store Alpha"
+                        placeholder="e.g., My Awesome Store"
+                        helperText="Display name for your store"
                     />
 
                     <TextField
                         fullWidth
-                        label="Location"
-                        value={formData.location}
-                        onChange={handleChange('location')}
+                        label="Subdomain"
+                        value={formData.subdomain}
+                        onChange={handleChange('subdomain')}
                         margin="normal"
                         required
-                        placeholder="e.g., New York, NY"
+                        placeholder="e.g., mystore"
+                        helperText="Your store will be accessible at: [subdomain].local"
                     />
 
                     <TextField
                         fullWidth
                         select
-                        label="Store Type"
-                        value={formData.type}
-                        onChange={handleChange('type')}
+                        label="E-Commerce Engine"
+                        value={formData.engine}
+                        onChange={handleChange('engine')}
                         margin="normal"
                         required
+                        helperText="Select the e-commerce platform"
                     >
-                        <MenuItem value="flagship">Flagship</MenuItem>
-                        <MenuItem value="standard">Standard</MenuItem>
-                        <MenuItem value="kiosk">Kiosk</MenuItem>
+                        <MenuItem value="woocommerce">WooCommerce (WordPress)</MenuItem>
+                        <MenuItem value="medusa" disabled>
+                            Medusa (Coming Soon)
+                        </MenuItem>
                     </TextField>
-
-                    <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-                        Hardware Configuration
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                        <TextField
-                            label="POS Terminals"
-                            type="number"
-                            value={formData.pos}
-                            onChange={handleChange('pos')}
-                            margin="normal"
-                            sx={{ flex: '1 1 150px' }}
-                            inputProps={{ min: 1 }}
-                        />
-                        <TextField
-                            label="Printers"
-                            type="number"
-                            value={formData.printers}
-                            onChange={handleChange('printers')}
-                            margin="normal"
-                            sx={{ flex: '1 1 150px' }}
-                            inputProps={{ min: 1 }}
-                        />
-                        <TextField
-                            label="Scanners"
-                            type="number"
-                            value={formData.scanners}
-                            onChange={handleChange('scanners')}
-                            margin="normal"
-                            sx={{ flex: '1 1 150px' }}
-                            inputProps={{ min: 1 }}
-                        />
-                    </Box>
-
-                    <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-                        Network Configuration
-                    </Typography>
-
-                    <TextField
-                        fullWidth
-                        label="VLAN ID"
-                        type="number"
-                        value={formData.vlan}
-                        onChange={handleChange('vlan')}
-                        margin="normal"
-                        inputProps={{ min: 1, max: 4094 }}
-                    />
-
-                    <TextField
-                        fullWidth
-                        label="IP Range"
-                        value={formData.ip_range}
-                        onChange={handleChange('ip_range')}
-                        margin="normal"
-                        placeholder="e.g., 192.168.1.0/24"
-                    />
 
                     <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
                         <Button
@@ -210,7 +148,7 @@ export default function StoreWizard() {
                             disabled={loading}
                             startIcon={loading && <CircularProgress size={20} />}
                         >
-                            {loading ? 'Creating...' : 'Create Store'}
+                            {loading ? 'Provisioning...' : 'Create Store'}
                         </Button>
                         <Button
                             variant="outlined"
