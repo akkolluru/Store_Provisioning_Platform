@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.storeName }}
+  labels:
+    app: woocommerce-store
+    store: {{ .Values.storeName }}
+    managed-by: store-provisioning-platform

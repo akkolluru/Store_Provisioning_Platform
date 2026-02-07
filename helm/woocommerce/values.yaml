@@ -1,0 +1,107 @@
+# Default values for WooCommerce store
+# This is a YAML-formatted file.
+
+# Store configuration
+storeName: "store1"
+storeSubdomain: "store1"
+
+# Domain configuration
+domain: "local"  # Will be overridden by values-local.yaml or values-prod.yaml
+
+# WordPress configuration
+wordpress:
+  image:
+    repository: wordpress
+    tag: "6.4-php8.2-apache"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # WordPress environment variables
+  env:
+    WORDPRESS_DB_HOST: "{{ .Values.storeName }}-mysql"
+    WORDPRESS_DB_NAME: "woocommerce"
+    WORDPRESS_DB_USER: "woocommerce"
+    # Password will be generated or provided via secret
+
+# MySQL configuration
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  
+  replicas: 1
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # MySQL environment variables
+  env:
+    MYSQL_DATABASE: "woocommerce"
+    MYSQL_USER: "woocommerce"
+    # Root and user passwords will be in secret
+  
+  # Persistent storage
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""  # Use default storage class
+
+# WordPress persistent storage
+wordpressPersistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  tls:
+    enabled: false
+    secretName: ""
+
+# Security
+securityContext:
+  runAsNonRoot: false  # WordPress needs root for Apache
+  fsGroup: 33  # www-data group
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

@@ -1,0 +1,46 @@
+# Production values for VPS/Cloud deployment
+
+# Domain for production (will be parameterized per store)
+domain: "yourdomain.com"
+
+# Use cloud storage
+mysql:
+  persistence:
+    storageClass: "do-block-storage"  # DigitalOcean example
+    size: 10Gi
+
+wordpressPersistence:
+  storageClass: "do-block-storage"
+  size: 10Gi
+
+# Ingress with TLS
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: true
+    secretName: "{{ .Values.storeName }}-tls"
+
+# Production resources
+wordpress:
+  replicas: 2  # High availability
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+mysql:
+  replicas: 1  # StatefulSet, consider cloud managed DB for true HA
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.storeName }}-mysql
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: mysql
+    store: {{ .Values.storeName }}
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+    name: mysql
+  selector:
+    app: mysql
+    store: {{ .Values.storeName }}

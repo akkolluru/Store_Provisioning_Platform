@@ -1,0 +1,44 @@
+# Local development values for Minikube/Kind/k3d
+
+# Domain for local development
+domain: "local"
+
+# Use hostPath or local-path-provisioner storage
+mysql:
+  persistence:
+    storageClass: "standard"  # Minikube default
+    size: 2Gi  # Smaller for local
+
+wordpressPersistence:
+  storageClass: "standard"
+  size: 2Gi
+
+# Ingress configuration for local
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  tls:
+    enabled: false  # No TLS for local
+
+# Reduced resources for local
+wordpress:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+mysql:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

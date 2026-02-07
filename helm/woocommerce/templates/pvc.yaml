@@ -1,0 +1,39 @@
+{{- if .Values.mysql.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storeName }}-mysql-pvc
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: mysql
+    store: {{ .Values.storeName }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.mysql.persistence.storageClass }}
+  storageClassName: {{ .Values.mysql.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.mysql.persistence.size }}
+---
+{{- end }}
+{{- if .Values.wordpressPersistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storeName }}-wordpress-pvc
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.wordpressPersistence.storageClass }}
+  storageClassName: {{ .Values.wordpressPersistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.wordpressPersistence.size }}
+{{- end }}

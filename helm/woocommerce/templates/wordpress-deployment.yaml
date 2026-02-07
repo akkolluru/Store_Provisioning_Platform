@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.storeName }}-wordpress
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+spec:
+  replicas: {{ .Values.wordpress.replicas }}
+  selector:
+    matchLabels:
+      app: wordpress
+      store: {{ .Values.storeName }}
+  template:
+    metadata:
+      labels:
+        app: wordpress
+        store: {{ .Values.storeName }}
+    spec:
+      initContainers:
+      - name: wait-for-mysql
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          until nc -z {{ .Values.storeName }}-mysql 3306; do
+            echo "Waiting for MySQL...";
+            sleep 2;
+          done;
+          echo "MySQL is ready!";
+      containers:
+      - name: wordpress
+        image: {{ .Values.wordpress.image.repository }}:{{ .Values.wordpress.image.tag }}
+        imagePullPolicy: {{ .Values.wordpress.image.pullPolicy }}
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: {{ .Values.storeName }}-mysql:3306
+        - name: WORDPRESS_DB_NAME
+          value: {{ .Values.mysql.env.MYSQL_DATABASE }}
+        - name: WORDPRESS_DB_USER
+          value: {{ .Values.mysql.env.MYSQL_USER }}
+        - name: WORDPRESS_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.storeName }}-mysql-secret
+              key: mysql-password
+        - name: WORDPRESS_CONFIG_EXTRA
+          value: |
+            define('WP_MEMORY_LIMIT', '256M');
+            define('WP_MAX_MEMORY_LIMIT', '512M');
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: wordpress-data
+          mountPath: /var/www/html
+        resources:
+          {{- toYaml .Values.wordpress.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 10 }}
+      volumes:
+      - name: wordpress-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.storeName }}-wordpress-pvc

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: medusa-store
+description: A Helm chart for provisioning Medusa.js stores on Kubernetes (STUB - To be implemented)
+type: application
+version: 0.1.0
+appVersion: "2.0"
+
+keywords:
+  - medusa
+  - ecommerce
+  - headless
+
+maintainers:
+  - name: Store Provisioning Platform
+    email: admin@example.com

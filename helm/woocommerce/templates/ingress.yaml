@@ -1,0 +1,31 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.storeName }}-ingress
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+  - hosts:
+    - {{ .Values.storeSubdomain }}.{{ .Values.domain }}
+    secretName: {{ .Values.ingress.tls.secretName | default (printf "%s-tls" .Values.storeName) }}
+  {{- end }}
+  rules:
+  - host: {{ .Values.storeSubdomain }}.{{ .Values.domain }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.storeName }}-wordpress
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}
