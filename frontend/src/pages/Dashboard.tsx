@@ -1,17 +1,102 @@
-import { Container, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Container, Typography, CircularProgress, Alert, Box } from '@mui/material';
+import StoreIcon from '@mui/icons-material/Store';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import CancelIcon from '@mui/icons-material/Cancel';
+import { storeApi } from '@/services/storeApi';
+import { Store } from '@/types/store';
+import MetricsCard from '@/components/MetricsCard';
 
 export default function Dashboard() {
+    const [stores, setStores] = useState<Store[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchStores();
+    }, []);
+
+    const fetchStores = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const { data } = await storeApi.getAll();
+            setStores(data.stores);
+        } catch (err) {
+            console.error('Failed to fetch stores:', err);
+            setError('Failed to load store data. Please ensure the backend is running.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <Container maxWidth="lg" sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <CircularProgress />
+            </Container>
+        );
+    }
+
+    if (error) {
+        return (
+            <Container maxWidth="lg" sx={{ mt: 4 }}>
+                <Alert severity="error">{error}</Alert>
+            </Container>
+        );
+    }
+
+    const metrics = {
+        total: stores.length,
+        active: stores.filter(s => s.status === 'active').length,
+        provisioning: stores.filter(s => s.status === 'provisioning').length,
+        decommissioned: stores.filter(s => s.status === 'decommissioned').length,
+    };
+
     return (
         <Container maxWidth="lg">
             <Typography variant="h4" component="h1" gutterBottom>
                 Dashboard
             </Typography>
-            <Typography variant="body1">
-                Welcome to the Store Provisioning Platform!
+            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
+                Overview of all stores in the platform
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                This page will display metrics and store statistics.
-            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                    <MetricsCard
+                        title="Total Stores"
+                        value={metrics.total}
+                        color="primary"
+                        icon={<StoreIcon fontSize="inherit" />}
+                    />
+                </Box>
+                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                    <MetricsCard
+                        title="Active"
+                        value={metrics.active}
+                        color="success"
+                        icon={<CheckCircleIcon fontSize="inherit" />}
+                    />
+                </Box>
+                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                    <MetricsCard
+                        title="Provisioning"
+                        value={metrics.provisioning}
+                        color="warning"
+                        icon={<HourglassEmptyIcon fontSize="inherit" />}
+                    />
+                </Box>
+                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                    <MetricsCard
+                        title="Decommissioned"
+                        value={metrics.decommissioned}
+                        color="error"
+                        icon={<CancelIcon fontSize="inherit" />}
+                    />
+                </Box>
+            </Box>
         </Container>
     );
 }
