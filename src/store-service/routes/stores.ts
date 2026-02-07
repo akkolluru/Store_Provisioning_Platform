@@ -63,6 +63,24 @@ function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
+ * GET /api/stress-cpu
+ * CPU stress endpoint for HPA testing
+ * Burns CPU for 50ms to trigger autoscaling thresholds
+ */
+router.get('/stress-cpu', (_req: Request, res: Response): void => {
+    const start = Date.now();
+    // Burn CPU for 50ms - enough to trigger HPA at scale
+    while (Date.now() - start < 50) {
+        Math.sqrt(Math.random()); // CPU-intensive operation
+    }
+    res.status(200).json({
+        status: 'cpu_stressed',
+        duration_ms: Date.now() - start,
+        message: 'CPU stress completed - use for HPA testing only'
+    });
+});
+
+/**
  * GET /api/stores
  * List all stores
  */
