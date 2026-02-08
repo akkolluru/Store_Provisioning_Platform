@@ -29,7 +29,7 @@ spec:
       serviceAccountName: store-service
       containers:
       - name: store-service
-        image: store-service:v1.2.1
+        image: store-service:v1.2.2
         imagePullPolicy: Never  # Use local image in minikube
         ports:
         - containerPort: 3000

@@ -8,9 +8,15 @@ let dbConnectionManager: DatabaseConnectionManager | null = null;
 
 export function getDatabaseManager(): DatabaseConnectionManager {
     if (!dbConnectionManager) {
-        const connectionString =
-            process.env.DATABASE_URL ||
-            'postgresql://store_user:store_password_local@postgresql-primary.store-platform.svc.cluster.local:5432/store_db';
+        // Build connection string from environment variables
+        const dbHost = process.env.DB_HOST || 'postgresql.store-platform.svc.cluster.local';
+        const dbPort = process.env.DB_PORT || '5432';
+        const dbName = process.env.DB_NAME || 'postgres';
+        const dbUser = process.env.DB_USER || 'postgres';
+        const dbPassword = process.env.DB_PASSWORD || '';
+
+        const connectionString = process.env.DATABASE_URL ||
+            `postgresql://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
 
         dbConnectionManager = new DatabaseConnectionManager({
             primary: {
