@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ .Values.storeName }}-limits
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: store-limits
+    store: {{ .Values.storeName }}
+spec:
+  limits:
+  # Container limits
+  - type: Container
+    max:
+      cpu: "2"
+      memory: "2Gi"
+    min:
+      cpu: "10m"
+      memory: "64Mi"
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "256Mi"
+  
+  # Pod limits (aggregate of all containers)
+  - type: Pod
+    max:
+      cpu: "4"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "128Mi"
+  
+  # PVC limits
+  - type: PersistentVolumeClaim
+    max:
+      storage: "20Gi"
+    min:
+      storage: "1Gi"

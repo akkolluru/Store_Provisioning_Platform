@@ -11,6 +11,7 @@ import {
     updateStoreSchema,
 } from '../models/store';
 import { getDatabaseManager } from '../../shared/database/db-instance';
+import { createStoreRateLimiter, storeQuotaChecker } from '../../shared/middleware/rate-limiter.middleware';
 
 const router = Router();
 
@@ -111,8 +112,10 @@ router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
 /**
  * POST /api/stores
  * Create a new store (provisions real WooCommerce/Medusa instance)
+ * Rate Limited: Max 5 stores per 15 minutes per IP
+ * Quota Checked: Max 10 active stores per user (future)
  */
-router.post('/stores', async (req: Request, res: Response): Promise<void> => {
+router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Request, res: Response): Promise<void> => {
     try {
         // Validate request body
         const { error, value } = createStoreSchema.validate(req.body);

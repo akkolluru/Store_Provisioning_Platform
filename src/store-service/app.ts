@@ -1,6 +1,8 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import VaultService from '../shared/services/vault-service';
 import storesRouter from './routes/stores';
+import { AuditLogger } from '../shared/services/audit-logger';
+import { generalApiRateLimiter } from '../shared/middleware/rate-limiter.middleware';
 
 /**
  * StoreService - Main Express application for the Store Provisioning Platform
@@ -24,6 +26,7 @@ class StoreService {
         // Parse URL-encoded bodies
         this.app.use(express.urlencoded({ extended: true }));
 
+
         // Add request ID for tracing
         this.app.use((req: Request, _res: Response, next: NextFunction) => {
             req.headers['x-request-id'] = req.headers['x-request-id'] || Date.now().toString();
@@ -38,6 +41,10 @@ class StoreService {
             });
             next();
         });
+
+        // Security Middleware
+        this.app.use(generalApiRateLimiter); // Apply rate limiting
+        this.app.use(AuditLogger.middleware()); // Enable audit logging
     }
 
     /**
