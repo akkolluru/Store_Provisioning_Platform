@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: store-resource-quota
+  namespace: {{ NAMESPACE }}
+spec:
+  hard:
+    # Compute resources - prevent resource exhaustion
+    requests.cpu: "2"              # Max 2 CPU cores requested
+    requests.memory: 4Gi           # Max 4Gi memory requested
+    limits.cpu: "4"                # Max 4 CPU cores limit
+    limits.memory: 8Gi             # Max 8Gi memory limit
+    
+    # Storage
+    requests.storage: 20Gi         # Max 20Gi storage requested
+    persistentvolumeclaims: "3"    # Max 3 PVCs
+    
+    # Object counts - prevent resource abuse
+    pods: "10"                     # Max 10 pods per store
+    services: "5"                  # Max 5 services
+    configmaps: "10"               # Max 10 ConfigMaps
+    secrets: "10"                  # Max 10 Secrets
+    
+    # Network
+    services.loadbalancers: "1"    # Max 1 LoadBalancer
+    services.nodeports: "0"        # No NodePorts allowed

@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-woocommerce
+  namespace: {{ NAMESPACE }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wordpress
+  policyTypes:
+  - Ingress
+  - Egress
+  
+  ingress:
+  # Allow HTTP/HTTPS from anywhere (public storefront)
+  - from: []  # Empty from means allow from anywhere
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 8080
+  
+  egress:
+  # Allow connection to MySQL in same namespace
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: mysql
+    ports:
+    - protocol: TCP
+      port: 3306
+  
+  # Allow internet access for WordPress updates, plugins, themes
+  - to:
+    - namespaceSelector: {}
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80
+  
+  # Allow DNS (covered by separate allow-dns policy, but explicit here)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

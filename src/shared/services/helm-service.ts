@@ -1,5 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -81,6 +83,11 @@ export class HelmService {
 
             console.log(`[HelmService] Store ${storeName} installed successfully`);
             console.log(stdout);
+
+            // Apply isolation policies after successful install
+            console.log(`[HelmService] Applying isolation policies to namespace ${namespace}`);
+            await this.applyIsolationPolicies(namespace);
+            console.log(`[HelmService] Isolation policies applied successfully`);
 
             const url = environment === 'local' ? `http://${fullDomain}` : `https://${fullDomain}`;
 
@@ -212,6 +219,59 @@ export class HelmService {
             return true;
         } catch (error) {
             return false;
+        }
+    }
+
+    /**
+     * Apply isolation policies (ResourceQuota, LimitRange, NetworkPolicies) to a namespace
+     * This enforces resource limits and network security for each store
+     */
+    async applyIsolationPolicies(namespace: string): Promise<void> {
+        const policyDir = path.join(process.cwd(), 'kubernetes', 'isolation');
+        const policies = [
+            'resource-quota.yaml',
+            'limit-range.yaml',
+            'network-policy-default-deny.yaml',
+            'network-policy-allow-dns.yaml',
+            'network-policy-woocommerce.yaml',
+            'network-policy-mysql.yaml',
+        ];
+
+        try {
+            for (const policyFile of policies) {
+                const policyPath = path.join(policyDir, policyFile);
+
+                // Check if policy file exists
+                if (!fs.existsSync(policyPath)) {
+                    console.warn(`[HelmService] Policy file not found: ${policyPath}`);
+                    continue;
+                }
+
+                // Read policy template
+                let policyYaml = fs.readFileSync(policyPath, 'utf8');
+
+                // Replace namespace placeholder
+                policyYaml = policyYaml.replace(/{{ NAMESPACE }}/g, namespace);
+
+                // Write to temp file and apply
+                const tempFile = path.join('/tmp', `policy-${namespace}-${Date.now()}.yaml`);
+                fs.writeFileSync(tempFile, policyYaml, 'utf8');
+
+                const { stderr } = await execAsync(`kubectl apply -f ${tempFile}`);
+
+                // Cleanup temp file
+                fs.unlinkSync(tempFile);
+
+                if (stderr && !stderr.includes('created') && !stderr.includes('configured')) {
+                    console.warn(`[HelmService] Policy ${policyFile} warnings: ${stderr}`);
+                }
+
+                console.log(`[HelmService] Applied ${policyFile} to ${namespace}`);
+            }
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[HelmService] Failed to apply isolation policies:`, errorMessage);
+            throw new Error(`Failed to apply isolation policies: ${errorMessage}`);
         }
     }
 }
