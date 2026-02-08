@@ -19,12 +19,15 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: frontend:v1.0.0
+        image: store-frontend:v1.1.1
         imagePullPolicy: Never  # For local minikube
         ports:
         - name: http
           containerPort: 80
           protocol: TCP
+        env:
+        - name: VITE_API_URL
+          value: "http://store-service.store-platform.svc.cluster.local"
         resources:
           requests:
             cpu: 50m

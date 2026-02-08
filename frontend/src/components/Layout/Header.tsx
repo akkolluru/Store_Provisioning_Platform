@@ -25,7 +25,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 </Typography>
                 <Box sx={{ flexGrow: 1 }} />
                 <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    v1.0.0
+                    v1.1.0
                 </Typography>
             </Toolbar>
         </AppBar>

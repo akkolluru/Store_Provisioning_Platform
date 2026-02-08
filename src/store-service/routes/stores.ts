@@ -326,4 +326,73 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
     }
 });
 
+// DELETE /stores/:id - Delete a store
+router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        if (!id || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+            res.status(400).json({
+                error: 'INVALID_INPUT',
+                message: 'Invalid store ID format',
+            });
+            return;
+        }
+
+        const dbManager = getDatabaseManager();
+
+        // Get store details first
+        const storeResult = await dbManager.executeQuery(
+            'SELECT * FROM stores WHERE id = $1 AND decommissioned_at IS NULL',
+            [id]
+        );
+
+        if (storeResult.rows.length === 0) {
+            res.status(404).json({
+                error: 'NOT_FOUND',
+                message: 'Store not found or already deleted',
+            });
+            return;
+        }
+
+        const store = storeResult.rows[0];
+
+        // Delete Kubernetes namespace (this will delete all resources)
+        if (store.namespace) {
+            try {
+                const k8sCommand = `kubectl delete namespace ${store.namespace}`;
+                console.log(`[DELETE] Deleting namespace: ${store.namespace}`);
+
+                // Execute kubectl command
+                const { execSync } = await import('child_process');
+                execSync(k8sCommand, { stdio: 'inherit' });
+
+                console.log(`[DELETE] Namespace ${store.namespace} deleted successfully`);
+            } catch (k8sError) {
+                console.error(`[DELETE] Error deleting namespace:`, k8sError);
+                // Continue with database update even if namespace deletion fails
+            }
+        }
+
+        // Update database - mark as decommissioned
+        const updateResult = await dbManager.executeQuery(
+            'UPDATE stores SET decommissioned_at = NOW(), version = version + 1 WHERE id = $1 RETURNING *',
+            [id]
+        );
+
+        console.log(`[DELETE] Store ${id} marked as decommissioned`);
+
+        res.status(200).json({
+            message: 'Store deleted successfully',
+            store: updateResult.rows[0],
+        });
+    } catch (error) {
+        console.error('Error deleting store:', error);
+        res.status(500).json({
+            error: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to delete store',
+        });
+    }
+});
+
 export default router;

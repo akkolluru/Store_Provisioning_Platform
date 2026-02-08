@@ -1,7 +1,10 @@
 import axios, { AxiosInstance } from 'axios';
 
+// Base API URL - uses nginx proxy in k8s or localhost for local dev
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
 const api: AxiosInstance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api',
+    baseURL: API_BASE_URL,
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
