@@ -9,6 +9,10 @@ data:
   LOG_LEVEL: "info"
   
   # Database
+  DB_HOST: "postgresql.store-platform.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "postgres"
+  DB_USER: "postgres"
   DATABASE_POOL_MAX: "20"
   DATABASE_POOL_MIN: "5"
   DATABASE_IDLE_TIMEOUT: "30000"
@@ -19,7 +23,7 @@ data:
   CIRCUIT_BREAKER_RESET_TIMEOUT: "30000"
   
   # Redis
-  DB_HOST: postgresql.store-platform.svc.cluster.local"
+  REDIS_HOST: "redis-master.store-platform.svc.cluster.local"
   REDIS_PORT: "6379"
   
   # Vault
