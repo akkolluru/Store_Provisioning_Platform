@@ -110,6 +110,45 @@ router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
 });
 
 /**
+ * GET /api/stores/:id
+ * Get a single store by ID
+ */
+router.get('/stores/:id', async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            res.status(400).json({
+                error: 'INVALID_ID',
+                message: 'Invalid store ID format. Must be a valid UUID.',
+            });
+            return;
+        }
+
+        const dbManager = getDatabaseManager();
+        const result = await dbManager.executeQuery('SELECT * FROM stores WHERE id = $1', [id]);
+
+        if (result.rows.length === 0) {
+            res.status(404).json({
+                error: 'NOT_FOUND',
+                message: `Store with ID ${id} not found`,
+            });
+            return;
+        }
+
+        res.status(200).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error fetching store:', error);
+        res.status(500).json({
+            error: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to fetch store',
+        });
+    }
+});
+
+/**
  * POST /api/stores
  * Create a new store (provisions real WooCommerce/Medusa instance)
  * Rate Limited: Max 5 stores per 15 minutes per IP

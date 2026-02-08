@@ -19,11 +19,11 @@ wordpress:
   
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
+      cpu: 250m
       memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
   
   # WordPress environment variables
   env:
@@ -41,13 +41,14 @@ mysql:
   
   replicas: 1
   
+  
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 250m
+      memory: 1Gi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 1000m
+      memory: 2Gi
   
   # MySQL environment variables
   env:

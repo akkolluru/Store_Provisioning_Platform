@@ -1,57 +1,66 @@
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: store-service-sa
+  name: store-service
   namespace: store-platform
   labels:
     app: store-service
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: store-provisioner-role
+  name: store-service-role
   labels:
     app: store-service
 rules:
-  # Namespace management
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["create", "get", "list", "watch", "delete"]
-  
-  # Resource management within namespaces
-  - apiGroups: ["", "apps", "networking.k8s.io", "rbac.authorization.k8s.io"]
-    resources: 
-      - "deployments"
-      - "replicasets"
-      - "services"
-      - "secrets"
-      - "configmaps"
-      - "persistentvolumeclaims"
-      - "statefulsets"
-      - "ingresses"
-      - "serviceaccounts"
-      - "roles"
-      - "rolebindings"
-    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
-  
-  # Node/Pod view permissions
-  - apiGroups: [""]
-    resources: ["pods", "pods/log"]
-    verbs: ["get", "list", "watch"]
+# Namespace management
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create", "get", "list", "delete", "update", "patch"]
+
+# Pod and Service management (for monitoring store deployments)
+- apiGroups: [""]
+  resources: ["pods", "services", "secrets", "configmaps", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Deployment and StatefulSet management
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Ingress management
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Resource Quotas and Limit Ranges
+- apiGroups: [""]
+  resources: ["resourcequotas", "limitranges"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Events (for debugging)
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+
+# For Helm operations - needs to manage releases
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: store-provisioner-binding
+  name: store-service-binding
   labels:
     app: store-service
-subjects:
-  - kind: ServiceAccount
-    name: store-service-sa
-    namespace: store-platform
 roleRef:
-  kind: ClusterRole
-  name: store-provisioner-role
   apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: store-service-role
+subjects:
+- kind: ServiceAccount
+  name: store-service
+  namespace: store-platform
