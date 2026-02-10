@@ -51,7 +51,7 @@ export default function Dashboard() {
         total: stores.length,
         active: stores.filter(s => s.status === 'ready' || s.status === 'active').length,
         provisioning: stores.filter(s => s.status === 'provisioning').length,
-        decommissioned: stores.filter(s => s.status === 'decommissioned' || s.decommissioned_at).length,
+        failed: stores.filter(s => s.status === 'failed').length,
     };
 
     return (
@@ -90,8 +90,8 @@ export default function Dashboard() {
                 </Box>
                 <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
                     <MetricsCard
-                        title="Decommissioned"
-                        value={metrics.decommissioned}
+                        title="Failed"
+                        value={metrics.failed}
                         color="error"
                         icon={<CancelIcon fontSize="inherit" />}
                     />

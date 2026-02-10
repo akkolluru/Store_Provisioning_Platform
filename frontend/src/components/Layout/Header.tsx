@@ -1,6 +1,7 @@
 import { AppBar, Toolbar, Typography, IconButton, Box } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import StoreIcon from '@mui/icons-material/Store';
+import { APP_VERSION } from '@/config/version';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -25,7 +26,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 </Typography>
                 <Box sx={{ flexGrow: 1 }} />
                 <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    v1.1.0
+                    v{APP_VERSION}
                 </Typography>
             </Toolbar>
         </AppBar>

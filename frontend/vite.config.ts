@@ -10,6 +10,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '1.1.7'),
+  },
   server: {
     port: 3000,
     proxy: {
