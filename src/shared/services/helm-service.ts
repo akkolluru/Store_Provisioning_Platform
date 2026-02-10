@@ -89,7 +89,30 @@ export class HelmService {
             await this.applyIsolationPolicies(namespace);
             console.log(`[HelmService] Isolation policies applied successfully`);
 
-            const url = environment === 'local' ? `http://${fullDomain}` : `https://${fullDomain}`;
+            // Generate accessible URL based on environment
+            let url: string;
+
+            if (environment === 'local') {
+                // For local development, get the NodePort service URL (immediately accessible)
+                try {
+                    const serviceName = `${storeName}-wordpress`;
+                    const getServiceCmd = `kubectl get service ${serviceName} -n ${namespace} -o jsonpath='{.spec.ports[0].nodePort}'`;
+                    const { stdout: nodePort } = await execAsync(getServiceCmd);
+
+                    // Get Minikube IP
+                    const { stdout: minikubeIP } = await execAsync('minikube ip');
+
+                    url = `http://${minikubeIP.trim()}:${nodePort.trim()}`;
+                    console.log(`[HelmService] Store accessible at: ${url}`);
+                } catch (error) {
+                    // Fallback to Ingress hostname if NodePort discovery fails
+                    console.warn(`[HelmService] Could not get NodePort, using Ingress hostname:`, error);
+                    url = `http://${fullDomain}`;
+                }
+            } else {
+                // Production: use HTTPS with Ingress hostname
+                url = `https://${fullDomain}`;
+            }
 
             return {
                 namespace,

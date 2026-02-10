@@ -3,6 +3,10 @@
 # Domain for local development
 domain: "local"
 
+# Service configuration - NodePort for easy local access without Ingress complexity
+service:
+  type: NodePort  # Automatically accessible via minikube ip:nodePort
+
 # Use hostPath or local-path-provisioner storage
 mysql:
   persistence:
@@ -23,7 +27,7 @@ wordpressPersistence:
 
 # Ingress configuration for local
 ingress:
-  enabled: true
+  enabled: true  # Keep enabled for production-like testing
   className: "nginx"
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
