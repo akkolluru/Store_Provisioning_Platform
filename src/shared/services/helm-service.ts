@@ -60,11 +60,13 @@ export class HelmService {
                 throw new Error(`Store ${storeName} already exists. Use update instead.`);
             }
 
-            // Install Helm chart
+            // Install Helm chart into the store's own namespace
             const helmCommand = [
                 'helm install',
                 storeName,
                 chartDir,
+                `--namespace ${namespace}`,
+                '--create-namespace',
                 `--set storeName=${storeName}`,
                 `--set storeSubdomain=${subdomain}`,
                 `--set domain=${domain}`,
@@ -90,29 +92,7 @@ export class HelmService {
             console.log(`[HelmService] Isolation policies applied successfully`);
 
             // Generate accessible URL based on environment
-            let url: string;
-
-            if (environment === 'local') {
-                // For local development, get the NodePort service URL (immediately accessible)
-                try {
-                    const serviceName = `${storeName}-wordpress`;
-                    const getServiceCmd = `kubectl get service ${serviceName} -n ${namespace} -o jsonpath='{.spec.ports[0].nodePort}'`;
-                    const { stdout: nodePort } = await execAsync(getServiceCmd);
-
-                    // Get Minikube IP
-                    const { stdout: minikubeIP } = await execAsync('minikube ip');
-
-                    url = `http://${minikubeIP.trim()}:${nodePort.trim()}`;
-                    console.log(`[HelmService] Store accessible at: ${url}`);
-                } catch (error) {
-                    // Fallback to Ingress hostname if NodePort discovery fails
-                    console.warn(`[HelmService] Could not get NodePort, using Ingress hostname:`, error);
-                    url = `http://${fullDomain}`;
-                }
-            } else {
-                // Production: use HTTPS with Ingress hostname
-                url = `https://${fullDomain}`;
-            }
+            const url = await this.generateStoreUrl(storeName, namespace, fullDomain, environment);
 
             return {
                 namespace,
@@ -135,11 +115,59 @@ export class HelmService {
     }
 
     /**
+     * Generate an accessible URL for a store based on environment.
+     * - Local: Uses NodePort service → http://<minikube-ip>:<node-port>
+     * - Production: Uses Ingress hostname → https://<subdomain>.<domain>
+     */
+    private async generateStoreUrl(
+        storeName: string,
+        namespace: string,
+        fullDomain: string,
+        environment: string
+    ): Promise<string> {
+        if (environment !== 'local') {
+            return `https://${fullDomain}`;
+        }
+
+        // Local: discover NodePort and Minikube IP for an immediately accessible URL
+        const serviceName = `${storeName}-wordpress`;
+
+        try {
+            const getNodePortCmd = `kubectl get service ${serviceName} -n ${namespace} -o jsonpath='{.spec.ports[0].nodePort}'`;
+            const { stdout: rawNodePort } = await execAsync(getNodePortCmd);
+            const nodePort = rawNodePort.trim().replace(/'/g, '');
+
+            if (!nodePort || nodePort === 'null') {
+                throw new Error(`NodePort not assigned for service ${serviceName}`);
+            }
+
+            const { stdout: rawIP } = await execAsync('minikube ip');
+            const minikubeIP = rawIP.trim();
+
+            if (!minikubeIP) {
+                throw new Error('Could not determine Minikube IP');
+            }
+
+            const url = `http://${minikubeIP}:${nodePort}`;
+            console.log(`[HelmService] Store URL generated: ${url}`);
+            return url;
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`[HelmService] Failed to generate NodePort URL: ${errorMessage}`);
+            // Fail with a clear error instead of silently returning a broken hostname
+            throw new Error(
+                `Store provisioned but URL generation failed: ${errorMessage}. ` +
+                `Ensure the service ${serviceName} exists in namespace ${namespace} with type NodePort.`
+            );
+        }
+    }
+
+    /**
      * Uninstall a store
      */
     async uninstallStore(storeName: string): Promise<void> {
         try {
-            const helmCommand = `helm uninstall ${storeName} --wait --timeout=5m`;
+            const helmCommand = `helm uninstall ${storeName} --namespace ${storeName} --wait --timeout=5m`;
 
             console.log(`[HelmService] Uninstalling store: ${helmCommand}`);
 

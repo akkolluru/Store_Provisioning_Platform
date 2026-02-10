@@ -3,6 +3,11 @@
 # Domain for local development
 domain: "local"
 
+# Service type - NodePort for direct access via minikube ip
+service:
+  type: NodePort
+  port: 80
+
 # Use hostPath or local-path-provisioner storage
 mysql:
   persistence:
