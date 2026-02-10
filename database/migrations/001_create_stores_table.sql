@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS stores (
     config JSONB,
     version INTEGER DEFAULT 1,
     engine VARCHAR(50) DEFAULT 'woocommerce',
+    url VARCHAR(255),
+    namespace VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
