@@ -91,7 +91,7 @@ router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
         const dbManager = getDatabaseManager();
 
         const result = await dbManager.executeQuery(
-            'SELECT * FROM stores ORDER BY created_at DESC',
+            'SELECT * FROM stores WHERE decommissioned_at IS NULL ORDER BY created_at DESC',
             [],
             { useReplica: true } // Use replica for read operations
         );
@@ -376,8 +376,8 @@ router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> 
 
         // Update database - mark as decommissioned
         const updateResult = await dbManager.executeQuery(
-            'UPDATE stores SET decommissioned_at = NOW(), version = version + 1 WHERE id = $1 RETURNING *',
-            [id]
+            'UPDATE stores SET decommissioned_at = NOW(), status = $1, version = version + 1 WHERE id = $2 RETURNING *',
+            [StoreStatus.DECOMMISSIONED, id]
         );
 
         console.log(`[DELETE] Store ${id} marked as decommissioned`);

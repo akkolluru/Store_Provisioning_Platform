@@ -93,8 +93,33 @@ class StoreService {
             });
         });
 
+
         // API routes
         this.app.use('/api', storesRouter);
+
+        // Root endpoint - API hub
+        this.app.get('/', (_req: Request, res: Response) => {
+            const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
+            res.status(200).json({
+                service: 'Store Provisioning Platform API',
+                version: process.env.npm_package_version || '1.0.0',
+                endpoints: {
+                    health: `${baseUrl}/health`,
+                    readiness: `${baseUrl}/ready`,
+                    stores: {
+                        list: `${baseUrl}/api/stores`,
+                        get: `${baseUrl}/api/stores/:id`,
+                        create: `${baseUrl}/api/stores (POST)`,
+                        update: `${baseUrl}/api/stores/:id (PUT)`,
+                        delete: `${baseUrl}/api/stores/:id (DELETE)`,
+                    },
+                    testing: {
+                        stressCpu: `${baseUrl}/api/stress-cpu`,
+                    }
+                },
+                documentation: 'API documentation for Store Provisioning Platform'
+            });
+        });
 
         // 404 handler
         this.app.use((_req: Request, res: Response) => {
