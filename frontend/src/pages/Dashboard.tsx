@@ -49,9 +49,9 @@ export default function Dashboard() {
 
     const metrics = {
         total: stores.length,
-        active: stores.filter(s => s.status === 'active').length,
+        active: stores.filter(s => s.status === 'ready' || s.status === 'active').length,
         provisioning: stores.filter(s => s.status === 'provisioning').length,
-        decommissioned: stores.filter(s => s.status === 'decommissioned').length,
+        decommissioned: stores.filter(s => s.status === 'decommissioned' || s.decommissioned_at).length,
     };
 
     return (
