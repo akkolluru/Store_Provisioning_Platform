@@ -148,6 +148,57 @@ npm run dev
 
 Server will start on `http://localhost:3000`
 
+### Accessing Store URLs (Ingress Configuration)
+
+When stores are created, they use Kubernetes Ingress for routing with nginx ingress controller. For store URLs to work on your local machine, you need to configure DNS resolution.
+
+#### Automatic Configuration (Recommended)
+
+Run the helper script to automatically add all store subdomains to `/etc/hosts`:
+
+```bash
+# Add all active store subdomains to /etc/hosts
+sudo ./scripts/configure-store-dns.sh
+
+# This will:
+# 1. Get Minikube IP
+# 2. Find all ingress hostnames
+# 3. Add entries like: 192.168.49.2  mystore.local
+```
+
+After running this script, you can access stores in your browser:
+- `http://mystore.local`
+- `http://shop1.local`
+- etc.
+
+#### Manual Configuration
+
+Alternatively, manually add entries to `/etc/hosts`:
+
+```bash
+# Get Minikube IP
+minikube ip
+# Example output: 192.168.49.2
+
+# Edit /etc/hosts
+sudo nano /etc/hosts
+
+# Add line:
+192.168.49.2  mystore.local
+```
+
+#### Cleanup
+
+To remove store DNS entries when deleting stores:
+
+```bash
+# Remove all store entries
+sudo ./scripts/cleanup-store-dns.sh
+
+# Remove specific subdomain only
+sudo ./scripts/cleanup-store-dns.sh mystore
+```
+
 ---
 
 ## 📡 API Endpoints
