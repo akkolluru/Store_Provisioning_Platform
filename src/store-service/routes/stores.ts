@@ -357,21 +357,15 @@ router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> 
 
         const store = storeResult.rows[0];
 
-        // Delete Kubernetes namespace (this will delete all resources)
-        if (store.namespace) {
-            try {
-                const k8sCommand = `kubectl delete namespace ${store.namespace}`;
-                console.log(`[DELETE] Deleting namespace: ${store.namespace}`);
-
-                // Execute kubectl command
-                const { execSync } = await import('child_process');
-                execSync(k8sCommand, { stdio: 'inherit' });
-
-                console.log(`[DELETE] Namespace ${store.namespace} deleted successfully`);
-            } catch (k8sError) {
-                console.error(`[DELETE] Error deleting namespace:`, k8sError);
-                // Continue with database update even if namespace deletion fails
-            }
+        // Uninstall store using Helm (this properly cleans up release and namespace)
+        const storeName = `store-${store.id}`;
+        try {
+            console.log(`[DELETE] Uninstalling Helm release: ${storeName}`);
+            await HelmService.uninstallStore(storeName);
+            console.log(`[DELETE] Helm release ${storeName} uninstalled successfully`);
+        } catch (helmError) {
+            console.error(`[DELETE] Error uninstalling Helm release:`, helmError);
+            // Continue with database update even if uninstall fails
         }
 
         // Update database - mark as decommissioned
