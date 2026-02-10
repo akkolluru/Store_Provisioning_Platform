@@ -15,17 +15,27 @@ else
     exit 1
 fi
 
-# Get Minikube IP
-echo "📡 Getting Minikube IP..."
-MINIKUBE_IP=$(minikube ip 2>/dev/null)
+# With ingress-dns addon, all ingress hosts resolve to 127.0.0.1
+# This requires minikube tunnel to be running
+INGRESS_IP="127.0.0.1"
 
-if [ -z "$MINIKUBE_IP" ]; then
-    echo "❌ Error: Could not get Minikube IP. Is Minikube running?"
-    echo "   Run 'minikube start' first."
-    exit 1
+echo "✅ Using Ingress IP: $INGRESS_IP (via minikube tunnel)"
+
+# Check if minikube tunnel is running
+if ! pgrep -f "minikube tunnel" > /dev/null; then
+    echo ""
+    echo "⚠️  WARNING: minikube tunnel is not running!"
+    echo "   Ingress will not work without it."
+    echo ""
+    echo "   To start the tunnel, run in a separate terminal:"
+    echo "   ./scripts/start-tunnel.sh"
+    echo ""
+    read -p "Continue anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
 fi
-
-echo "✅ Minikube IP: $MINIKUBE_IP"
 
 # Get all ingress hosts
 echo "🔍 Finding all store ingress hosts..."
@@ -57,8 +67,8 @@ sudo sed -i.bak "/$START_MARKER/,/$END_MARKER/d" "$HOSTS_FILE"
     echo ""
     echo "$START_MARKER"
     for host in $INGRESS_HOSTS; do
-        echo "$MINIKUBE_IP  $host"
-        echo "  ✅ $host -> $MINIKUBE_IP"
+        echo "$INGRESS_IP  $host"
+        echo "  ✅ $host -> $INGRESS_IP"
     done
     echo "$END_MARKER"
 } | sudo tee -a "$HOSTS_FILE" > /dev/null
