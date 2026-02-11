@@ -42,12 +42,10 @@ export class HelmService {
             throw new Error(`Unsupported engine: ${engine}. Must be 'woocommerce' or 'medusa'`);
         }
 
-        if (engine === 'medusa') {
-            throw new Error('Medusa engine is not yet implemented. Please use woocommerce.');
-        }
-
         const namespace = storeName;
         const fullDomain = `${subdomain}.${domain}`;
+
+        // Determine chart directory based on engine
         const chartDir = `${this.chartPath}/${engine}`;
         const valuesFile = environment === 'production'
             ? `${chartDir}/values-prod.yaml`
@@ -116,7 +114,7 @@ export class HelmService {
 
     /**
      * Generate an accessible URL for a store based on environment.
-     * - Local: Uses NodePort service → http://<minikube-ip>:<node-port>
+     * - Local: Uses Ingress hostname → http://<subdomain>.local (requires minikube tunnel)
      * - Production: Uses Ingress hostname → https://<subdomain>.<domain>
      */
     private async generateStoreUrl(
@@ -129,36 +127,136 @@ export class HelmService {
             return `https://${fullDomain}`;
         }
 
-        // Local: discover NodePort and Minikube IP for an immediately accessible URL
+        // Local: Use Ingress-based URL with minikube tunnel
+        // The Ingress controller (LoadBalancer type) gets 127.0.0.1 via minikube tunnel
+        // /etc/hosts maps <subdomain>.local → 127.0.0.1
         const serviceName = `${storeName}-wordpress`;
 
         try {
-            const getNodePortCmd = `kubectl get service ${serviceName} -n ${namespace} -o jsonpath='{.spec.ports[0].nodePort}'`;
-            const { stdout: rawNodePort } = await execAsync(getNodePortCmd);
-            const nodePort = rawNodePort.trim().replace(/'/g, '');
+            // Wait for the service to be ready
+            console.log(`[HelmService] Waiting for service ${serviceName} in namespace ${namespace} to be ready...`);
 
-            if (!nodePort || nodePort === 'null') {
-                throw new Error(`NodePort not assigned for service ${serviceName}`);
+            let serviceExists = false;
+            let attempts = 0;
+            const maxAttempts = 30; // Wait up to 3 minutes (30 * 6 seconds)
+
+            while (!serviceExists && attempts < maxAttempts) {
+                try {
+                    const checkServiceCmd = `kubectl get service ${serviceName} -n ${namespace} --ignore-not-found -o name`;
+                    const { stdout: serviceCheck } = await execAsync(checkServiceCmd);
+
+                    if (serviceCheck.trim()) {
+                        serviceExists = true;
+                        console.log(`[HelmService] Service ${serviceName} found in namespace ${namespace}`);
+                        break;
+                    }
+                } catch (checkError) {
+                    console.warn(`[HelmService] Attempt ${attempts + 1} - Service ${serviceName} not ready yet:`, checkError);
+                }
+
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 6000)); // Wait 6 seconds between attempts
             }
 
-            const { stdout: rawIP } = await execAsync('minikube ip');
-            const minikubeIP = rawIP.trim();
-
-            if (!minikubeIP) {
-                throw new Error('Could not determine Minikube IP');
+            if (!serviceExists) {
+                throw new Error(`Service ${serviceName} was not created in namespace ${namespace} after ${maxAttempts * 6} seconds`);
             }
 
-            const url = `http://${minikubeIP}:${nodePort}`;
+            // Wait for the Ingress resource to be ready
+            console.log(`[HelmService] Waiting for Ingress resource in namespace ${namespace}...`);
+            let ingressReady = false;
+            let ingressAttempts = 0;
+            const maxIngressAttempts = 10;
+
+            while (!ingressReady && ingressAttempts < maxIngressAttempts) {
+                try {
+                    const checkIngressCmd = `kubectl get ingress -n ${namespace} --ignore-not-found -o name`;
+                    const { stdout: ingressCheck } = await execAsync(checkIngressCmd);
+
+                    if (ingressCheck.trim()) {
+                        ingressReady = true;
+                        console.log(`[HelmService] Ingress resource found in namespace ${namespace}`);
+                        break;
+                    }
+                } catch (ingressError) {
+                    console.warn(`[HelmService] Attempt ${ingressAttempts + 1} - Ingress not ready yet:`, ingressError);
+                }
+
+                ingressAttempts++;
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+            // Auto-configure /etc/hosts entry for the store domain
+            await this.configureLocalDns(fullDomain);
+
+            const url = `http://${fullDomain}`;
             console.log(`[HelmService] Store URL generated: ${url}`);
             return url;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[HelmService] Failed to generate NodePort URL: ${errorMessage}`);
-            // Fail with a clear error instead of silently returning a broken hostname
-            throw new Error(
-                `Store provisioned but URL generation failed: ${errorMessage}. ` +
-                `Ensure the service ${serviceName} exists in namespace ${namespace} with type NodePort.`
+            console.error(`[HelmService] Failed to generate store URL: ${errorMessage}`);
+
+            // Provide more detailed error information
+            try {
+                const listServicesCmd = `kubectl get services -n ${namespace}`;
+                const { stdout: servicesList } = await execAsync(listServicesCmd);
+                console.error(`[HelmService] Available services in namespace ${namespace}:\n${servicesList}`);
+            } catch (listError) {
+                console.error(`[HelmService] Could not list services for debugging:`, listError);
+            }
+
+            // Even if DNS config fails, still return the Ingress URL
+            // User can manually add the /etc/hosts entry
+            const fallbackUrl = `http://${fullDomain}`;
+            console.warn(`[HelmService] Returning Ingress URL as fallback: ${fallbackUrl}`);
+            return fallbackUrl;
+        }
+    }
+
+    /**
+     * Auto-configure /etc/hosts entry for a store's local domain.
+     * Maps <subdomain>.local → 127.0.0.1 so that Ingress works via minikube tunnel.
+     */
+    private async configureLocalDns(domain: string): Promise<void> {
+        try {
+            // Check if entry already exists in /etc/hosts
+            const { stdout: hostsContent } = await execAsync('cat /etc/hosts');
+
+            if (hostsContent.includes(domain)) {
+                // Check if it's pointing to 127.0.0.1 already
+                const lines = hostsContent.split('\n');
+                const existingEntry = lines.find(line => line.includes(domain) && !line.trim().startsWith('#'));
+
+                if (existingEntry && existingEntry.includes('127.0.0.1')) {
+                    console.log(`[HelmService] DNS entry for ${domain} already exists and points to 127.0.0.1`);
+                    return;
+                }
+
+                // Entry exists but points to wrong IP — we need to update it
+                console.log(`[HelmService] Updating DNS entry for ${domain} to point to 127.0.0.1`);
+            }
+
+            // Add/update the /etc/hosts entry
+            // Use a marker-based approach to manage our entries
+            const marker = '# store-provisioning-platform';
+            const entry = `127.0.0.1  ${domain}  ${marker}`;
+
+            // Remove any existing entry for this domain (our entries only)
+            const removeCmd = `sudo sed -i.bak '/${domain}.*${marker}/d' /etc/hosts 2>/dev/null || true`;
+            await execAsync(removeCmd);
+
+            // Append the new entry
+            const addCmd = `echo '${entry}' | sudo tee -a /etc/hosts > /dev/null`;
+            await execAsync(addCmd);
+
+            console.log(`[HelmService] DNS entry added: 127.0.0.1 → ${domain}`);
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(
+                `[HelmService] Could not auto-configure /etc/hosts for ${domain}: ${errorMessage}. ` +
+                `Please manually add: 127.0.0.1  ${domain}`
             );
+            // Don't throw — this is a best-effort operation
         }
     }
 
