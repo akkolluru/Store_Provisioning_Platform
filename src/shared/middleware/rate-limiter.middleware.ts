@@ -24,10 +24,7 @@ export const createStoreRateLimiter = rateLimit({
             (clientIp === '127.0.0.1' || clientIp === '::1');
     },
 
-    // Custom key generator (by IP)
-    keyGenerator: (req: Request) => {
-        return req.ip || req.socket.remoteAddress || 'unknown';
-    },
+    // Use default key generator (handles IPv4/IPv6 correctly)
 
     // Handler for when limit is exceeded
     handler: (req: Request, res: Response) => {

@@ -9,10 +9,10 @@ let dbConnectionManager: DatabaseConnectionManager | null = null;
 export function getDatabaseManager(): DatabaseConnectionManager {
     if (!dbConnectionManager) {
         // Build connection string from environment variables
-        const dbHost = process.env.DB_HOST || 'postgresql.store-platform.svc.cluster.local';
+        const dbHost = process.env.DB_HOST || 'localhost';
         const dbPort = process.env.DB_PORT || '5432';
         const dbName = process.env.DB_NAME || 'postgres';
-        const dbUser = process.env.DB_USER || 'postgres';
+        const dbUser = process.env.DB_USER || 'kaushik';
         const dbPassword = process.env.DB_PASSWORD || '';
 
         const connectionString = process.env.DATABASE_URL ||

@@ -14,10 +14,10 @@ export default defineConfig({
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '1.1.7'),
   },
   server: {
-    port: 3000,
+    port: 4000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },
