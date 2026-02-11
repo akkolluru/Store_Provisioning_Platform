@@ -70,7 +70,7 @@ export class HelmService {
                 `--set domain=${domain}`,
                 `-f ${valuesFile}`,
                 '--wait',
-                '--timeout=10m'
+                '--timeout=5m'
             ].join(' ');
 
             console.log(`[HelmService] Installing store: ${helmCommand}`);
@@ -216,44 +216,44 @@ export class HelmService {
     /**
      * Auto-configure /etc/hosts entry for a store's local domain.
      * Maps <subdomain>.local → 127.0.0.1 so that Ingress works via minikube tunnel.
+     * NOTE: Does NOT use sudo — reads /etc/hosts, appends only if writable.
+     *       If not writable, logs the manual command for the user.
      */
     private async configureLocalDns(domain: string): Promise<void> {
         try {
-            // Check if entry already exists in /etc/hosts
-            const { stdout: hostsContent } = await execAsync('cat /etc/hosts');
+            const hostsFile = '/etc/hosts';
+            const hostsContent = fs.readFileSync(hostsFile, 'utf8');
 
-            if (hostsContent.includes(domain)) {
-                // Check if it's pointing to 127.0.0.1 already
-                const lines = hostsContent.split('\n');
-                const existingEntry = lines.find(line => line.includes(domain) && !line.trim().startsWith('#'));
+            // Check if correct entry already exists
+            const lines = hostsContent.split('\n');
+            const existingEntry = lines.find(
+                line => line.includes(domain) && !line.trim().startsWith('#')
+            );
 
-                if (existingEntry && existingEntry.includes('127.0.0.1')) {
-                    console.log(`[HelmService] DNS entry for ${domain} already exists and points to 127.0.0.1`);
-                    return;
-                }
-
-                // Entry exists but points to wrong IP — we need to update it
-                console.log(`[HelmService] Updating DNS entry for ${domain} to point to 127.0.0.1`);
+            if (existingEntry && existingEntry.includes('127.0.0.1')) {
+                console.log(`[HelmService] DNS entry for ${domain} already exists and points to 127.0.0.1`);
+                return;
             }
 
-            // Add/update the /etc/hosts entry
-            // Use a marker-based approach to manage our entries
+            // Try to append without sudo (will only work if we have write permission)
             const marker = '# store-provisioning-platform';
-            const entry = `127.0.0.1  ${domain}  ${marker}`;
+            const entry = `127.0.0.1  ${domain}  ${marker}\n`;
 
-            // Remove any existing entry for this domain (our entries only)
-            const removeCmd = `sudo sed -i.bak '/${domain}.*${marker}/d' /etc/hosts 2>/dev/null || true`;
-            await execAsync(removeCmd);
-
-            // Append the new entry
-            const addCmd = `echo '${entry}' | sudo tee -a /etc/hosts > /dev/null`;
-            await execAsync(addCmd);
-
-            console.log(`[HelmService] DNS entry added: 127.0.0.1 → ${domain}`);
+            try {
+                fs.appendFileSync(hostsFile, entry);
+                console.log(`[HelmService] DNS entry added: 127.0.0.1 → ${domain}`);
+            } catch {
+                // No write permission — log the manual command
+                console.warn(
+                    `[HelmService] Cannot write to /etc/hosts (permission denied). ` +
+                    `Run this to add DNS:\n` +
+                    `  echo '${entry.trim()}' | sudo tee -a /etc/hosts`
+                );
+            }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.warn(
-                `[HelmService] Could not auto-configure /etc/hosts for ${domain}: ${errorMessage}. ` +
+                `[HelmService] Could not configure DNS for ${domain}: ${errorMessage}. ` +
                 `Please manually add: 127.0.0.1  ${domain}`
             );
             // Don't throw — this is a best-effort operation
