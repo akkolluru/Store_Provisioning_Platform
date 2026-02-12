@@ -172,14 +172,37 @@ export default function StoreList() {
                             </TableRow>
                         ) : (
                             stores.map((store) => (
-                                <TableRow key={store.id} hover>
-                                    <TableCell>{store.name}</TableCell>
+                                <TableRow
+                                    key={store.id}
+                                    sx={{
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(99, 102, 241, 0.04)',
+                                            transform: 'scale(1.005)',
+                                        },
+                                    }}
+                                >
+                                    <TableCell>
+                                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                            {store.name}
+                                        </Typography>
+                                    </TableCell>
                                     <TableCell sx={{ textTransform: 'capitalize' }}>
                                         {store.engine}
                                     </TableCell>
                                     <TableCell>
                                         {store.url ? (
-                                            <Link href={store.url} target="_blank" rel="noopener">
+                                            <Link
+                                                href={store.url}
+                                                target="_blank"
+                                                rel="noopener"
+                                                sx={{
+                                                    transition: 'color 0.2s ease',
+                                                    '&:hover': {
+                                                        color: 'primary.dark',
+                                                    },
+                                                }}
+                                            >
                                                 {store.url}
                                             </Link>
                                         ) : (
@@ -193,7 +216,11 @@ export default function StoreList() {
                                             label={store.status}
                                             color={getStatusColor(store.status)}
                                             size="small"
-                                            sx={{ textTransform: 'capitalize' }}
+                                            className={store.status === 'provisioning' ? 'status-pulse' : ''}
+                                            sx={{
+                                                textTransform: 'capitalize',
+                                                fontWeight: 500,
+                                            }}
                                         />
                                     </TableCell>
                                     <TableCell>
@@ -214,6 +241,12 @@ export default function StoreList() {
                                             color="error"
                                             onClick={() => handleDeleteClick(store)}
                                             disabled={store.status === 'provisioning'}
+                                            sx={{
+                                                transition: 'all 0.2s ease',
+                                                '&:hover:not(:disabled)': {
+                                                    transform: 'scale(1.1)',
+                                                },
+                                            }}
                                         >
                                             <DeleteIcon />
                                         </IconButton>

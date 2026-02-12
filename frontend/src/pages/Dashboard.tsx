@@ -55,7 +55,7 @@ export default function Dashboard() {
     };
 
     return (
-        <Container maxWidth="lg">
+        <Container maxWidth="lg" className="page-enter">
             <Typography variant="h4" component="h1" gutterBottom>
                 Dashboard
             </Typography>
@@ -64,7 +64,13 @@ export default function Dashboard() {
             </Typography>
 
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                <Box
+                    sx={{
+                        flex: '1 1 200px',
+                        minWidth: 200,
+                        animation: 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0s backwards',
+                    }}
+                >
                     <MetricsCard
                         title="Total Stores"
                         value={metrics.total}
@@ -72,7 +78,13 @@ export default function Dashboard() {
                         icon={<StoreIcon fontSize="inherit" />}
                     />
                 </Box>
-                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                <Box
+                    sx={{
+                        flex: '1 1 200px',
+                        minWidth: 200,
+                        animation: 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards',
+                    }}
+                >
                     <MetricsCard
                         title="Active"
                         value={metrics.active}
@@ -80,7 +92,13 @@ export default function Dashboard() {
                         icon={<CheckCircleIcon fontSize="inherit" />}
                     />
                 </Box>
-                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                <Box
+                    sx={{
+                        flex: '1 1 200px',
+                        minWidth: 200,
+                        animation: 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards',
+                    }}
+                >
                     <MetricsCard
                         title="Provisioning"
                         value={metrics.provisioning}
@@ -88,7 +106,13 @@ export default function Dashboard() {
                         icon={<HourglassEmptyIcon fontSize="inherit" />}
                     />
                 </Box>
-                <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
+                <Box
+                    sx={{
+                        flex: '1 1 200px',
+                        minWidth: 200,
+                        animation: 'fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.3s backwards',
+                    }}
+                >
                     <MetricsCard
                         title="Failed"
                         value={metrics.failed}
