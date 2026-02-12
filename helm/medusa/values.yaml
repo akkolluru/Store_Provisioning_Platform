@@ -1,0 +1,106 @@
+# Default values for Medusa store
+# This is a YAML-formatted file.
+
+# Store configuration
+storeName: "store1"
+storeSubdomain: "store1"
+
+# Domain configuration
+domain: "local"  # Will be overridden by values-local.yaml or values-prod.yaml
+
+# Medusa configuration
+medusa:
+  image:
+    repository: medusajs/medusa
+    tag: "1.16.2"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Medusa environment variables
+  env:
+    DATABASE_TYPE: "sqlite"
+    NODE_ENV: "development"
+
+# PostgreSQL configuration for Medusa (instead of MySQL for WooCommerce)
+postgresql:
+  image:
+    repository: postgres
+    tag: "14-alpine"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # PostgreSQL environment variables
+  env:
+    POSTGRES_DB: "medusa"
+    POSTGRES_USER: "medusa"
+    # Password will be generated or provided via secret
+
+  # Persistent storage
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""  # Use default storage class
+
+# Medusa persistent storage
+medusaPersistence:
+  enabled: true
+  size: 5Gi
+  storageClass: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 9000
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  tls:
+    enabled: false
+    secretName: ""
+
+# Security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 9000
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 9000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3

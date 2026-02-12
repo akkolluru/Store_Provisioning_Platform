@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.storeName }}-postgresql
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: postgresql
+    store: {{ .Values.storeName }}
+spec:
+  serviceName: {{ .Values.storeName }}-postgresql
+  replicas: {{ .Values.postgresql.replicas }}
+  selector:
+    matchLabels:
+      app: postgresql
+      store: {{ .Values.storeName }}
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        store: {{ .Values.storeName }}
+    spec:
+      containers:
+      - name: postgresql
+        image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+        imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        {{- range $key, $value := .Values.postgresql.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.storeName }}-postgresql-secret
+              key: password
+        volumeMounts:
+        - name: postgresql-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: {{ .Values.postgresql.resources.requests.memory }}
+            cpu: {{ .Values.postgresql.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.postgresql.resources.limits.memory }}
+            cpu: {{ .Values.postgresql.resources.limits.cpu }}
+      volumes:
+      - name: postgresql-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.storeName }}-postgresql-pvc

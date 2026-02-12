@@ -1,0 +1,47 @@
+# Local development values for Medusa on Minikube/Kind/k3d
+
+# Domain for local development
+domain: "local"
+
+# Service type - NodePort for direct access via minikube ip
+service:
+  type: NodePort
+  port: 9000
+
+# Use hostPath or local-path-provisioner storage
+postgresql:
+  persistence:
+    storageClass: "standard"  # Minikube default
+    size: 2Gi  # Smaller for local
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+medusaPersistence:
+  storageClass: "standard"
+  size: 2Gi
+
+# Ingress configuration for local
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+  tls:
+    enabled: false  # No TLS for local
+
+# Medusa configuration
+medusa:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

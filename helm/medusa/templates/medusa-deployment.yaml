@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.storeName }}-medusa
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: medusa
+    store: {{ .Values.storeName }}
+spec:
+  replicas: {{ .Values.medusa.replicas }}
+  selector:
+    matchLabels:
+      app: medusa
+      store: {{ .Values.storeName }}
+  template:
+    metadata:
+      labels:
+        app: medusa
+        store: {{ .Values.storeName }}
+    spec:
+      containers:
+      - name: medusa
+        image: "{{ .Values.medusa.image.repository }}:{{ .Values.medusa.image.tag }}"
+        imagePullPolicy: {{ .Values.medusa.image.pullPolicy }}
+        ports:
+        - containerPort: 9000
+          name: http
+        env:
+        {{- range $key, $value := .Values.medusa.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        - name: DATABASE_HOST
+          value: "{{ .Values.storeName }}-postgresql"
+        - name: DATABASE_USERNAME
+          value: "medusa"
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.storeName }}-postgresql-secret
+              key: password
+        volumeMounts:
+        - name: medusa-data
+          mountPath: /var/lib/medusa
+        resources:
+          requests:
+            memory: {{ .Values.medusa.resources.requests.memory }}
+            cpu: {{ .Values.medusa.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.medusa.resources.limits.memory }}
+            cpu: {{ .Values.medusa.resources.limits.cpu }}
+        {{- if .Values.livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.httpGet.path }}
+            port: {{ .Values.livenessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.readinessProbe }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.httpGet.path }}
+            port: {{ .Values.readinessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
+      volumes:
+      - name: medusa-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.storeName }}-medusa-pvc
+      {{- if .Values.securityContext }}
+      securityContext:
+        {{- if .Values.securityContext.runAsNonRoot }}
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        {{- end }}
+        {{- if .Values.securityContext.runAsUser }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+        {{- end }}
+        {{- if .Values.securityContext.fsGroup }}
+        fsGroup: {{ .Values.securityContext.fsGroup }}
+        {{- end }}
+      {{- end }}

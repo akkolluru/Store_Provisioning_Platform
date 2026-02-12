@@ -1,0 +1,44 @@
+# Production values for Medusa on VPS/Cloud deployment
+
+# Domain for production (will be parameterized per store)
+domain: "yourdomain.com"
+
+# Use cloud storage
+postgresql:
+  persistence:
+    storageClass: "do-block-storage"  # DigitalOcean example
+    size: 10Gi
+  replicas: 1  # StatefulSet, consider cloud managed DB for true HA
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+medusaPersistence:
+  storageClass: "do-block-storage"
+  size: 10Gi
+
+# Ingress with TLS
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: true
+    secretName: "{{ .Values.storeName }}-tls"
+
+# Medusa production configuration
+medusa:
+  replicas: 2  # High availability
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
