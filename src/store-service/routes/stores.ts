@@ -160,7 +160,15 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
         };
 
         const engine = (value.config?.engine as 'woocommerce' | 'medusa') || 'woocommerce';
-        const subdomain = sanitizeInput(value.config?.subdomain || sanitizedData.name.toLowerCase().replace(/\s+/g, '-'));
+
+        // Sanitize subdomain for DNS compliance: only lowercase letters, numbers, and hyphens
+        const rawSubdomain = value.config?.subdomain || sanitizedData.name.toLowerCase().replace(/\s+/g, '-');
+        const subdomain = sanitizeInput(rawSubdomain)
+            .toLowerCase()
+            .replace(/[^a-z0-9-]/g, '-')  // Replace invalid chars (including underscores) with hyphens
+            .replace(/^-+|-+$/g, '')       // Remove leading/trailing hyphens
+            .replace(/-+/g, '-')           // Collapse multiple hyphens
+            .substring(0, 63);             // DNS label max length
 
         const dbManager = getDatabaseManager();
 
