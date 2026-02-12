@@ -47,12 +47,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 },
             }}
         >
-            <Toolbar /> {/* Spacer for AppBar */}
+            <Toolbar />
             <Box sx={{ px: 2, pt: 2, pb: 1 }}>
                 <Typography
                     variant="overline"
                     sx={{
-                        color: '#94a3b8',
+                        color: '#a09585',
                         fontWeight: 600,
                         fontSize: '0.65rem',
                         letterSpacing: '0.1em',
@@ -77,19 +77,19 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                                     transition: 'all 0.2s ease',
                                     ...(isActive
                                         ? {
-                                            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.08) 100%)',
-                                            borderLeft: '3px solid #6366f1',
+                                            background: 'rgba(167, 139, 107, 0.08)',
+                                            borderLeft: '3px solid #a78b6b',
                                             '& .MuiListItemIcon-root': {
-                                                color: '#6366f1',
+                                                color: '#a78b6b',
                                             },
                                             '& .MuiListItemText-primary': {
                                                 fontWeight: 600,
-                                                color: '#4f46e5',
+                                                color: '#6b5e4d',
                                             },
                                         }
                                         : {
                                             '&:hover': {
-                                                backgroundColor: 'rgba(99, 102, 241, 0.04)',
+                                                backgroundColor: 'rgba(167, 139, 107, 0.04)',
                                             },
                                         }),
                                 }}
@@ -97,7 +97,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                                 <ListItemIcon
                                     sx={{
                                         minWidth: 40,
-                                        color: isActive ? '#6366f1' : '#94a3b8',
+                                        color: isActive ? '#a78b6b' : '#a09585',
                                         transition: 'color 0.2s ease',
                                     }}
                                 >
@@ -116,12 +116,11 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 })}
             </List>
 
-            <Divider sx={{ mt: 'auto', mx: 2, borderColor: 'rgba(0,0,0,0.05)' }} />
+            <Divider sx={{ mt: 'auto', mx: 2, borderColor: 'rgba(44, 36, 24, 0.06)' }} />
 
-            {/* Bottom branding */}
             <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <CloudQueueIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
-                <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                <CloudQueueIcon sx={{ fontSize: 16, color: '#a09585' }} />
+                <Typography variant="caption" sx={{ color: '#a09585', fontSize: '0.7rem' }}>
                     Powered by Kubernetes
                 </Typography>
             </Box>

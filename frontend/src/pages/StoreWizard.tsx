@@ -22,7 +22,6 @@ export default function StoreWizard() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
-    // Form state
     const [formData, setFormData] = useState({
         name: '',
         engine: 'woocommerce' as StoreEngine,
@@ -40,7 +39,6 @@ export default function StoreWizard() {
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
-        // Validation
         if (!formData.name || !formData.subdomain) {
             setError('Store name and subdomain are required');
             return;
@@ -86,7 +84,7 @@ export default function StoreWizard() {
                                 width: 64,
                                 height: 64,
                                 borderRadius: '16px',
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                background: 'linear-gradient(135deg, #6b8a6b 0%, #8aab8a 100%)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -110,7 +108,6 @@ export default function StoreWizard() {
 
     return (
         <Box className="page-enter" sx={{ maxWidth: 580, mx: 'auto' }}>
-            {/* Page Header */}
             <Box sx={{ mb: 4 }}>
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
                     Create New Store
@@ -136,13 +133,13 @@ export default function StoreWizard() {
                                 fontWeight: 700,
                                 ...(i === 0
                                     ? {
-                                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                        background: 'linear-gradient(135deg, #a78b6b 0%, #c4a882 100%)',
                                         color: 'white',
-                                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                                        boxShadow: '0 2px 8px rgba(167, 139, 107, 0.3)',
                                     }
                                     : {
-                                        backgroundColor: 'rgba(0,0,0,0.06)',
-                                        color: '#94a3b8',
+                                        backgroundColor: 'rgba(44, 36, 24, 0.06)',
+                                        color: '#a09585',
                                     }),
                             }}
                         >
@@ -152,7 +149,7 @@ export default function StoreWizard() {
                             variant="caption"
                             sx={{
                                 fontWeight: i === 0 ? 600 : 400,
-                                color: i === 0 ? '#4f46e5' : '#94a3b8',
+                                color: i === 0 ? '#8b7355' : '#a09585',
                                 fontSize: '0.75rem',
                             }}
                         >
@@ -163,7 +160,7 @@ export default function StoreWizard() {
                                 sx={{
                                     width: 32,
                                     height: 1,
-                                    backgroundColor: 'rgba(0,0,0,0.08)',
+                                    backgroundColor: 'rgba(44, 36, 24, 0.08)',
                                     mx: 0.5,
                                 }}
                             />
@@ -172,11 +169,10 @@ export default function StoreWizard() {
                 ))}
             </Box>
 
-            {/* Form Card */}
             <Paper
                 sx={{
                     p: { xs: 3, md: 4 },
-                    borderLeft: '3px solid #6366f1',
+                    borderLeft: '3px solid #a78b6b',
                     animation: 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards',
                 }}
             >
@@ -191,7 +187,7 @@ export default function StoreWizard() {
                         variant="subtitle2"
                         sx={{
                             fontWeight: 600,
-                            color: '#6366f1',
+                            color: '#a78b6b',
                             textTransform: 'uppercase',
                             letterSpacing: '0.06em',
                             fontSize: '0.7rem',

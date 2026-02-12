@@ -20,7 +20,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                         mr: 2,
                         transition: 'all 0.2s ease',
                         '&:hover': {
-                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                            backgroundColor: 'rgba(167, 139, 107, 0.08)',
                             transform: 'scale(1.05)',
                         },
                     }}
@@ -34,11 +34,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
                             width: 32,
                             height: 32,
                             borderRadius: '10px',
-                            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                            background: 'linear-gradient(135deg, #a78b6b 0%, #c4a882 100%)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                            boxShadow: '0 2px 8px rgba(167, 139, 107, 0.3)',
                         }}
                     >
                         <RocketLaunchIcon sx={{ fontSize: 18, color: 'white' }} />
@@ -50,10 +50,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                         sx={{
                             fontWeight: 700,
                             fontSize: '1.05rem',
-                            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
+                            color: '#2c2418',
                         }}
                     >
                         StorePlatform
@@ -66,12 +63,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     label={`v${APP_VERSION}`}
                     size="small"
                     sx={{
-                        backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                        color: '#6366f1',
+                        backgroundColor: 'rgba(167, 139, 107, 0.08)',
+                        color: '#8b7355',
                         fontWeight: 600,
                         fontSize: '0.7rem',
                         height: 24,
-                        border: '1px solid rgba(99, 102, 241, 0.15)',
+                        border: '1px solid rgba(167, 139, 107, 0.15)',
                     }}
                 />
             </Toolbar>
@@ -79,9 +76,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <Box
                 sx={{
                     height: '2px',
-                    background: 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 35%, #a78bfa 65%, #6366f1 100%)',
+                    background: 'linear-gradient(90deg, #a78b6b 0%, #c4a882 35%, #d4c4a8 65%, #a78b6b 100%)',
                     backgroundSize: '200% 100%',
-                    animation: 'shimmer 3s linear infinite',
+                    animation: 'shimmer 4s linear infinite',
                 }}
             />
         </AppBar>

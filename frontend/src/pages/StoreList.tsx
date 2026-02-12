@@ -56,7 +56,6 @@ export default function StoreList() {
         fetchStores();
     }, []);
 
-    // Auto-refresh for stores in provisioning status
     useEffect(() => {
         const hasProvisioning = stores.some(store => store.status === 'provisioning');
         if (hasProvisioning) {
@@ -87,7 +86,6 @@ export default function StoreList() {
 
     const handleDeleteConfirm = async () => {
         if (!deleteDialog.store) return;
-
         try {
             setDeleting(true);
             await storeApi.delete(deleteDialog.store.id);
@@ -108,14 +106,13 @@ export default function StoreList() {
     if (loading && stores.length === 0) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-                <CircularProgress sx={{ color: '#6366f1' }} />
+                <CircularProgress sx={{ color: '#a78b6b' }} />
             </Box>
         );
     }
 
     return (
         <Box className="page-enter">
-            {/* Header Row */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                 <Box>
                     <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
@@ -130,15 +127,15 @@ export default function StoreList() {
                         onClick={fetchStores}
                         disabled={loading}
                         sx={{
-                            backgroundColor: 'rgba(99, 102, 241, 0.06)',
+                            backgroundColor: 'rgba(167, 139, 107, 0.06)',
                             transition: 'all 0.2s ease',
                             '&:hover': {
-                                backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                                backgroundColor: 'rgba(167, 139, 107, 0.12)',
                                 transform: 'rotate(90deg)',
                             },
                         }}
                     >
-                        <RefreshIcon sx={{ color: '#6366f1', fontSize: 20 }} />
+                        <RefreshIcon sx={{ color: '#a78b6b', fontSize: 20 }} />
                     </IconButton>
                     <Button
                         variant="contained"
@@ -158,7 +155,6 @@ export default function StoreList() {
             )}
 
             {stores.length === 0 ? (
-                /* ─── Empty State ─── */
                 <Card
                     sx={{
                         textAlign: 'center',
@@ -172,7 +168,7 @@ export default function StoreList() {
                                 width: 72,
                                 height: 72,
                                 borderRadius: '20px',
-                                background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.08) 100%)',
+                                background: 'rgba(167, 139, 107, 0.08)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -180,7 +176,7 @@ export default function StoreList() {
                                 mb: 3,
                             }}
                         >
-                            <StorefrontIcon sx={{ fontSize: 36, color: '#6366f1' }} />
+                            <StorefrontIcon sx={{ fontSize: 36, color: '#a78b6b' }} />
                         </Box>
                         <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                             No stores yet
@@ -200,7 +196,6 @@ export default function StoreList() {
                     </CardContent>
                 </Card>
             ) : (
-                /* ─── Store Table ─── */
                 <TableContainer
                     component={Paper}
                     sx={{
@@ -225,7 +220,7 @@ export default function StoreList() {
                                     sx={{
                                         transition: 'all 0.15s ease',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(99, 102, 241, 0.03)',
+                                            backgroundColor: 'rgba(167, 139, 107, 0.03)',
                                         },
                                         '&:last-child td': {
                                             borderBottom: 'none',
@@ -233,7 +228,7 @@ export default function StoreList() {
                                     }}
                                 >
                                     <TableCell>
-                                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c2418' }}>
                                             {store.name}
                                         </Typography>
                                     </TableCell>
@@ -244,7 +239,7 @@ export default function StoreList() {
                                             variant="outlined"
                                             sx={{
                                                 textTransform: 'capitalize',
-                                                borderColor: 'rgba(0,0,0,0.08)',
+                                                borderColor: 'rgba(44, 36, 24, 0.1)',
                                                 fontSize: '0.75rem',
                                             }}
                                         />
@@ -282,8 +277,8 @@ export default function StoreList() {
                                             sx={{
                                                 fontFamily: '"JetBrains Mono", monospace',
                                                 fontSize: '0.72rem',
-                                                color: '#94a3b8',
-                                                backgroundColor: 'rgba(0,0,0,0.03)',
+                                                color: '#a09585',
+                                                backgroundColor: 'rgba(44, 36, 24, 0.03)',
                                                 px: 1,
                                                 py: 0.25,
                                                 borderRadius: 1,
@@ -299,11 +294,11 @@ export default function StoreList() {
                                             onClick={() => handleDeleteClick(store)}
                                             disabled={store.status === 'provisioning'}
                                             sx={{
-                                                color: '#94a3b8',
+                                                color: '#a09585',
                                                 transition: 'all 0.2s ease',
                                                 '&:hover:not(:disabled)': {
-                                                    color: '#ef4444',
-                                                    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                                                    color: '#c47060',
+                                                    backgroundColor: 'rgba(196, 112, 96, 0.06)',
                                                 },
                                             }}
                                         >
@@ -317,7 +312,6 @@ export default function StoreList() {
                 </TableContainer>
             )}
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialog.open} onClose={handleDeleteCancel}>
                 <DialogTitle sx={{ fontWeight: 600 }}>Delete Store</DialogTitle>
                 <DialogContent>
@@ -327,7 +321,7 @@ export default function StoreList() {
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2.5 }}>
-                    <Button onClick={handleDeleteCancel} disabled={deleting} sx={{ color: '#64748b' }}>
+                    <Button onClick={handleDeleteCancel} disabled={deleting} sx={{ color: '#7a6e5d' }}>
                         Cancel
                     </Button>
                     <Button

@@ -10,19 +10,19 @@ interface MetricsCardProps {
 
 export default function MetricsCard({ title, value, icon, color = 'primary' }: MetricsCardProps) {
     const gradientMap = {
-        primary: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        success: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-        warning: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-        error: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-        info: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+        primary: 'linear-gradient(135deg, #a78b6b 0%, #c4a882 100%)',
+        success: 'linear-gradient(135deg, #6b8a6b 0%, #8aab8a 100%)',
+        warning: 'linear-gradient(135deg, #c4a35a 0%, #d4b872 100%)',
+        error: 'linear-gradient(135deg, #c47060 0%, #d48a7a 100%)',
+        info: 'linear-gradient(135deg, #6b7f8a 0%, #8a9dab 100%)',
     };
 
     const shadowMap = {
-        primary: 'rgba(102, 126, 234, 0.4)',
-        success: 'rgba(16, 185, 129, 0.4)',
-        warning: 'rgba(245, 158, 11, 0.4)',
-        error: 'rgba(239, 68, 68, 0.4)',
-        info: 'rgba(59, 130, 246, 0.4)',
+        primary: 'rgba(167, 139, 107, 0.35)',
+        success: 'rgba(107, 138, 107, 0.35)',
+        warning: 'rgba(196, 163, 90, 0.35)',
+        error: 'rgba(196, 112, 96, 0.35)',
+        info: 'rgba(107, 127, 138, 0.35)',
     };
 
     return (
@@ -34,6 +34,7 @@ export default function MetricsCard({ title, value, icon, color = 'primary' }: M
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                border: 'none',
                 '&:hover': {
                     transform: 'translateY(-4px)',
                     boxShadow: `0 20px 25px -5px ${shadowMap[color]}, 0 8px 10px -6px ${shadowMap[color]}`,
@@ -45,7 +46,7 @@ export default function MetricsCard({ title, value, icon, color = 'primary' }: M
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)',
                     pointerEvents: 'none',
                 },
             }}
@@ -57,7 +58,7 @@ export default function MetricsCard({ title, value, icon, color = 'primary' }: M
                             variant="body2"
                             gutterBottom
                             sx={{
-                                color: 'rgba(255,255,255,0.9)',
+                                color: 'rgba(255,255,255,0.85)',
                                 fontWeight: 500,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
@@ -81,12 +82,12 @@ export default function MetricsCard({ title, value, icon, color = 'primary' }: M
                     {icon && (
                         <Box
                             sx={{
-                                color: 'rgba(255,255,255,0.3)',
+                                color: 'rgba(255,255,255,0.25)',
                                 fontSize: 56,
                                 transition: 'all 0.3s ease',
                                 '.MuiCard-root:hover &': {
                                     transform: 'scale(1.1) rotate(5deg)',
-                                    color: 'rgba(255,255,255,0.4)',
+                                    color: 'rgba(255,255,255,0.35)',
                                 },
                             }}
                         >

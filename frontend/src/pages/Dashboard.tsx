@@ -50,7 +50,7 @@ export default function Dashboard() {
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-                <CircularProgress sx={{ color: '#6366f1' }} />
+                <CircularProgress sx={{ color: '#a78b6b' }} />
             </Box>
         );
     }
@@ -74,10 +74,10 @@ export default function Dashboard() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'ready': case 'active': return '#10b981';
-            case 'provisioning': return '#f59e0b';
-            case 'failed': return '#ef4444';
-            default: return '#94a3b8';
+            case 'ready': case 'active': return '#6b8a6b';
+            case 'provisioning': return '#c4a35a';
+            case 'failed': return '#c47060';
+            default: return '#a09585';
         }
     };
 
@@ -98,8 +98,7 @@ export default function Dashboard() {
             <Card
                 sx={{
                     mb: 4,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6366f1 100%)',
-                    backgroundSize: '200% 200%',
+                    background: 'linear-gradient(135deg, #a78b6b 0%, #8b7355 40%, #6b5e4d 100%)',
                     color: 'white',
                     border: 'none',
                     position: 'relative',
@@ -116,7 +115,7 @@ export default function Dashboard() {
                         width: 200,
                         height: 200,
                         borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.06)',
+                        background: 'rgba(255,255,255,0.05)',
                     }}
                 />
                 <Box
@@ -127,7 +126,7 @@ export default function Dashboard() {
                         width: 150,
                         height: 150,
                         borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.04)',
+                        background: 'rgba(255,255,255,0.03)',
                     }}
                 />
                 <CardContent sx={{ position: 'relative', zIndex: 1, py: 4, px: { xs: 3, md: 4 } }}>
@@ -148,14 +147,14 @@ export default function Dashboard() {
                         startIcon={<AddIcon />}
                         onClick={() => navigate('/stores/new')}
                         sx={{
-                            backgroundColor: 'rgba(255,255,255,0.2)',
+                            backgroundColor: 'rgba(255,255,255,0.18)',
                             backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255,255,255,0.25)',
+                            border: '1px solid rgba(255,255,255,0.2)',
                             color: 'white',
                             fontWeight: 600,
                             px: 3,
                             '&:hover': {
-                                backgroundColor: 'rgba(255,255,255,0.3)',
+                                backgroundColor: 'rgba(255,255,255,0.28)',
                                 boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
                             },
                         }}
@@ -199,8 +198,8 @@ export default function Dashboard() {
                                 label={`${stores.length} total`}
                                 size="small"
                                 sx={{
-                                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-                                    color: '#6366f1',
+                                    backgroundColor: 'rgba(167, 139, 107, 0.08)',
+                                    color: '#8b7355',
                                     fontWeight: 600,
                                     fontSize: '0.7rem',
                                     height: 22,
@@ -225,12 +224,12 @@ export default function Dashboard() {
                                             justifyContent: 'space-between',
                                             px: 3,
                                             py: 1.5,
-                                            borderTop: index === 0 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-                                            borderBottom: '1px solid rgba(0,0,0,0.05)',
+                                            borderTop: index === 0 ? '1px solid rgba(44, 36, 24, 0.06)' : 'none',
+                                            borderBottom: '1px solid rgba(44, 36, 24, 0.06)',
                                             transition: 'background-color 0.15s ease',
                                             cursor: 'pointer',
                                             '&:hover': {
-                                                backgroundColor: 'rgba(99, 102, 241, 0.03)',
+                                                backgroundColor: 'rgba(167, 139, 107, 0.03)',
                                             },
                                         }}
                                         onClick={() => navigate('/stores')}
@@ -246,17 +245,17 @@ export default function Dashboard() {
                                                 }}
                                             />
                                             <Box>
-                                                <Typography variant="body2" sx={{ fontWeight: 500, color: '#1e293b', fontSize: '0.875rem' }}>
+                                                <Typography variant="body2" sx={{ fontWeight: 500, color: '#2c2418', fontSize: '0.875rem' }}>
                                                     {store.name}
                                                 </Typography>
-                                                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                                <Typography variant="caption" sx={{ color: '#a09585' }}>
                                                     {store.engine} • {store.status}
                                                 </Typography>
                                             </Box>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <AccessTimeIcon sx={{ fontSize: 12, color: '#cbd5e1' }} />
-                                            <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                                            <AccessTimeIcon sx={{ fontSize: 12, color: '#c4b8a8' }} />
+                                            <Typography variant="caption" sx={{ color: '#a09585', fontSize: '0.7rem' }}>
                                                 {timeAgo(store.created_at)}
                                             </Typography>
                                         </Box>
@@ -285,21 +284,21 @@ export default function Dashboard() {
                             icon: <AddIcon />,
                             title: 'Create Store',
                             desc: 'Launch a new WooCommerce store',
-                            gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                            gradient: 'linear-gradient(135deg, #a78b6b 0%, #c4a882 100%)',
                             onClick: () => navigate('/stores/new'),
                         },
                         {
                             icon: <ListAltIcon />,
                             title: 'View All Stores',
                             desc: 'Manage existing deployments',
-                            gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            gradient: 'linear-gradient(135deg, #6b8a6b 0%, #8aab8a 100%)',
                             onClick: () => navigate('/stores'),
                         },
                         {
                             icon: <RefreshIcon />,
                             title: 'Refresh Data',
                             desc: 'Fetch latest store statuses',
-                            gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            gradient: 'linear-gradient(135deg, #6b7f8a 0%, #8a9dab 100%)',
                             onClick: fetchStores,
                         },
                     ].map((action) => (
@@ -311,7 +310,7 @@ export default function Dashboard() {
                                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '&:hover': {
                                     transform: 'translateY(-2px)',
-                                    boxShadow: '0 8px 25px -5px rgba(99, 102, 241, 0.15)',
+                                    boxShadow: '0 8px 25px -5px rgba(167, 139, 107, 0.15)',
                                 },
                             }}
                         >
@@ -332,10 +331,10 @@ export default function Dashboard() {
                                     {action.icon}
                                 </Box>
                                 <Box>
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#2c2418', fontSize: '0.875rem' }}>
                                         {action.title}
                                     </Typography>
-                                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                    <Typography variant="caption" sx={{ color: '#a09585' }}>
                                         {action.desc}
                                     </Typography>
                                 </Box>
