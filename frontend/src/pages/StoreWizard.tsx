@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Container,
     Typography,
     Paper,
     TextField,
@@ -10,7 +9,10 @@ import {
     MenuItem,
     Alert,
     CircularProgress,
+    Card,
+    CardContent,
 } from '@mui/material';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import { storeApi } from '@/services/storeApi';
 import { StoreEngine } from '@/types/store';
 
@@ -73,24 +75,111 @@ export default function StoreWizard() {
 
     if (success) {
         return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="success">
-                    Store provisioning initiated! Redirecting to store list...
-                </Alert>
-            </Container>
+            <Box
+                className="page-enter"
+                sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}
+            >
+                <Card sx={{ textAlign: 'center', maxWidth: 440, width: '100%' }}>
+                    <CardContent sx={{ py: 5 }}>
+                        <Box
+                            sx={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: '16px',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                mx: 'auto',
+                                mb: 2.5,
+                            }}
+                        >
+                            <RocketLaunchIcon sx={{ fontSize: 32, color: 'white' }} />
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                            Store Provisioning Started!
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Redirecting to store list...
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Box>
         );
     }
 
     return (
-        <Container maxWidth="md">
-            <Typography variant="h4" component="h1" gutterBottom>
-                Create New E-Commerce Store
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-                Provision a new WooCommerce or Medusa store on Kubernetes
-            </Typography>
+        <Box className="page-enter" sx={{ maxWidth: 580, mx: 'auto' }}>
+            {/* Page Header */}
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                    Create New Store
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    Provision a new WooCommerce or Medusa store on Kubernetes
+                </Typography>
+            </Box>
 
-            <Paper sx={{ p: 3 }}>
+            {/* Step Indicators */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+                {['Configure', 'Deploy', 'Done'].map((step, i) => (
+                    <Box key={step} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                            sx={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                ...(i === 0
+                                    ? {
+                                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                                        color: 'white',
+                                        boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                                    }
+                                    : {
+                                        backgroundColor: 'rgba(0,0,0,0.06)',
+                                        color: '#94a3b8',
+                                    }),
+                            }}
+                        >
+                            {i + 1}
+                        </Box>
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                fontWeight: i === 0 ? 600 : 400,
+                                color: i === 0 ? '#4f46e5' : '#94a3b8',
+                                fontSize: '0.75rem',
+                            }}
+                        >
+                            {step}
+                        </Typography>
+                        {i < 2 && (
+                            <Box
+                                sx={{
+                                    width: 32,
+                                    height: 1,
+                                    backgroundColor: 'rgba(0,0,0,0.08)',
+                                    mx: 0.5,
+                                }}
+                            />
+                        )}
+                    </Box>
+                ))}
+            </Box>
+
+            {/* Form Card */}
+            <Paper
+                sx={{
+                    p: { xs: 3, md: 4 },
+                    borderLeft: '3px solid #6366f1',
+                    animation: 'slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards',
+                }}
+            >
                 <form onSubmit={handleSubmit}>
                     {error && (
                         <Alert severity="error" sx={{ mb: 3 }}>
@@ -98,7 +187,17 @@ export default function StoreWizard() {
                         </Alert>
                     )}
 
-                    <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                    <Typography
+                        variant="subtitle2"
+                        sx={{
+                            fontWeight: 600,
+                            color: '#6366f1',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            fontSize: '0.7rem',
+                            mb: 2,
+                        }}
+                    >
                         Store Configuration
                     </Typography>
 
@@ -146,9 +245,10 @@ export default function StoreWizard() {
                             variant="contained"
                             size="large"
                             disabled={loading}
-                            startIcon={loading && <CircularProgress size={20} />}
+                            startIcon={loading ? <CircularProgress size={18} /> : <RocketLaunchIcon />}
+                            sx={{ px: 4 }}
                         >
-                            {loading ? 'Provisioning...' : 'Create Store'}
+                            {loading ? 'Provisioning...' : 'Deploy Store'}
                         </Button>
                         <Button
                             variant="outlined"
@@ -161,6 +261,6 @@ export default function StoreWizard() {
                     </Box>
                 </form>
             </Paper>
-        </Container>
+        </Box>
     );
 }

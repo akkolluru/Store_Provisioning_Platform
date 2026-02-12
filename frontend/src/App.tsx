@@ -19,15 +19,18 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh' }}>
           <Header onMenuClick={toggleSidebar} />
           <Sidebar open={sidebarOpen} onClose={closeSidebar} />
           <Box
             component="main"
             sx={{
               flexGrow: 1,
-              p: 3,
+              px: { xs: 2, sm: 3, md: 4 },
+              py: 3,
               width: '100%',
+              maxWidth: 1200,
+              mx: 'auto',
             }}
           >
             <Toolbar /> {/* Spacer for fixed AppBar */}
