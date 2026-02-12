@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.storeName }}-woocommerce-setup
+  namespace: {{ .Values.storeName }}
+  labels:
+    app: wordpress
+    store: {{ .Values.storeName }}
+data:
+  setup-woocommerce.sh: |
+    #!/bin/bash
+    # Auto-install WooCommerce after WordPress is ready
+    # This script runs as a postStart lifecycle hook
+    set -e
+
+    MARKER="/var/www/html/.woocommerce-installed"
+    LOG="/tmp/woocommerce-setup.log"
+
+    # If already done, skip
+    if [ -f "$MARKER" ]; then
+      exit 0
+    fi
+
+    exec > "$LOG" 2>&1
+
+    echo "[WooSetup] Starting WooCommerce auto-install..."
+
+    # Wait for WordPress files to be available
+    echo "[WooSetup] Waiting for WordPress files..."
+    ATTEMPTS=0
+    while [ ! -f /var/www/html/wp-includes/version.php ]; do
+      ATTEMPTS=$((ATTEMPTS + 1))
+      if [ $ATTEMPTS -ge 60 ]; then
+        echo "[WooSetup] Timeout: WordPress files not found after 5 minutes"
+        exit 0  # Don't fail the container
+      fi
+      sleep 5
+    done
+
+    echo "[WooSetup] WordPress files ready"
+
+    # Wait for database to be fully connected
+    echo "[WooSetup] Waiting for WordPress database connection..."
+    ATTEMPTS=0
+    while ! php -r "
+      \$host = getenv('WORDPRESS_DB_HOST');
+      \$user = getenv('WORDPRESS_DB_USER');
+      \$pass = getenv('WORDPRESS_DB_PASSWORD');
+      \$db   = getenv('WORDPRESS_DB_NAME');
+      \$conn = @new mysqli(\$host, \$user, \$pass, \$db);
+      if (\$conn->connect_error) { exit(1); }
+      \$conn->close();
+    " 2>/dev/null; do
+      ATTEMPTS=$((ATTEMPTS + 1))
+      if [ $ATTEMPTS -ge 30 ]; then
+        echo "[WooSetup] Timeout: DB connection failed after 2.5 minutes"
+        exit 0
+      fi
+      sleep 5
+    done
+
+    echo "[WooSetup] Database connected"
+
+    # Download WP-CLI
+    echo "[WooSetup] Downloading WP-CLI..."
+    curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    chmod +x wp-cli.phar
+    mv wp-cli.phar /usr/local/bin/wp
+
+    # Check if WordPress is installed
+    if ! wp core is-installed --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[WooSetup] Running WordPress core install..."
+      wp core install \
+        --path=/var/www/html \
+        --url="http://{{ .Values.storeSubdomain }}.{{ .Values.domain }}" \
+        --title="{{ .Values.storeName }}" \
+        --admin_user=admin \
+        --admin_password=admin123 \
+        --admin_email=admin@{{ .Values.storeSubdomain }}.{{ .Values.domain }} \
+        --skip-email \
+        --allow-root
+      echo "[WooSetup] WordPress core installed"
+    else
+      echo "[WooSetup] WordPress already installed"
+    fi
+
+    # Install and activate WooCommerce
+    if ! wp plugin is-installed woocommerce --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[WooSetup] Installing WooCommerce plugin..."
+      wp plugin install woocommerce --activate --path=/var/www/html --allow-root
+      echo "[WooSetup] WooCommerce installed and activated"
+    elif ! wp plugin is-active woocommerce --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[WooSetup] Activating WooCommerce..."
+      wp plugin activate woocommerce --path=/var/www/html --allow-root
+    else
+      echo "[WooSetup] WooCommerce already active"
+    fi
+
+    # Install and activate Storefront theme (WooCommerce's default theme)
+    if ! wp theme is-installed storefront --path=/var/www/html --allow-root 2>/dev/null; then
+      echo "[WooSetup] Installing Storefront theme..."
+      wp theme install storefront --activate --path=/var/www/html --allow-root
+      echo "[WooSetup] Storefront theme installed and activated"
+    fi
+
+    # Set permalink structure for WooCommerce
+    wp rewrite structure '/%postname%/' --path=/var/www/html --allow-root 2>/dev/null || true
+    wp rewrite flush --path=/var/www/html --allow-root 2>/dev/null || true
+
+    # Mark as complete
+    touch "$MARKER"
+    echo "[WooSetup] ✅ WooCommerce setup complete!"

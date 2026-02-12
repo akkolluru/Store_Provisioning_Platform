@@ -53,9 +53,16 @@ spec:
         ports:
         - containerPort: 80
           name: http
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/bash", "-c", "nohup /bin/bash /scripts/setup-woocommerce.sh > /tmp/woocommerce-setup.log 2>&1 &"]
         volumeMounts:
         - name: wordpress-data
           mountPath: /var/www/html
+        - name: setup-scripts
+          mountPath: /scripts
+          readOnly: true
         resources:
           {{- toYaml .Values.wordpress.resources | nindent 10 }}
         livenessProbe:
@@ -66,3 +73,7 @@ spec:
       - name: wordpress-data
         persistentVolumeClaim:
           claimName: {{ .Values.storeName }}-wordpress-pvc
+      - name: setup-scripts
+        configMap:
+          name: {{ .Values.storeName }}-woocommerce-setup
+          defaultMode: 0755

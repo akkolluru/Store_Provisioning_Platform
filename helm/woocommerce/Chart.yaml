@@ -3,7 +3,7 @@ name: woocommerce-store
 description: A Helm chart for provisioning WooCommerce stores on Kubernetes
 type: application
 version: 1.0.0
-appVersion: "6.0"
+appVersion: "6.9.1"
 
 keywords:
   - woocommerce

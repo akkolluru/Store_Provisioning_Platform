@@ -12,7 +12,7 @@ domain: "local"  # Will be overridden by values-local.yaml or values-prod.yaml
 wordpress:
   image:
     repository: wordpress
-    tag: "6.4-php8.2-apache"
+    tag: "6.9.1-php8.2-apache"
     pullPolicy: IfNotPresent
   
   replicas: 1
