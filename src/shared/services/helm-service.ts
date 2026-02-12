@@ -64,7 +64,7 @@ export class HelmService {
                 `--set domain=${domain}`,
                 `-f ${valuesFile}`,
                 '--wait',
-                '--timeout=5m'
+                '--timeout=10m'
             ].join(' ');
 
             console.log(`[HelmService] Installing store: ${helmCommand}`);

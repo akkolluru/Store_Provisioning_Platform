@@ -89,11 +89,22 @@ securityContext:
   fsGroup: 33  # www-data group
 
 # Health checks
+# startupProbe disables liveness/readiness until the container is initialized.
+# WordPress needs 2-5 min on minikube to unpack and start Apache.
+startupProbe:
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30  # 30 × 10s = 5 min startup window
+
 livenessProbe:
   httpGet:
     path: /
     port: 80
-  initialDelaySeconds: 120
+  initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 6
@@ -102,7 +113,7 @@ readinessProbe:
   httpGet:
     path: /
     port: 80
-  initialDelaySeconds: 30
+  initialDelaySeconds: 10
   periodSeconds: 10
   timeoutSeconds: 5
-  failureThreshold: 3
+  failureThreshold: 6

@@ -65,6 +65,8 @@ spec:
           readOnly: true
         resources:
           {{- toYaml .Values.wordpress.resources | nindent 10 }}
+        startupProbe:
+          {{- toYaml .Values.startupProbe | nindent 10 }}
         livenessProbe:
           {{- toYaml .Values.livenessProbe | nindent 10 }}
         readinessProbe:

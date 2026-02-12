@@ -46,6 +46,17 @@ spec:
           mountPath: /var/lib/mysql
         resources:
           {{- toYaml .Values.mysql.resources | nindent 10 }}
+        startupProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 18  # 18 × 10s = 3 min startup window
         livenessProbe:
           exec:
             command:
@@ -53,9 +64,10 @@ spec:
             - ping
             - -h
             - localhost
-          initialDelaySeconds: 30
+          initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
+          failureThreshold: 6
         readinessProbe:
           exec:
             command:
@@ -63,9 +75,10 @@ spec:
             - ping
             - -h
             - localhost
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
-          timeoutSeconds: 1
+          timeoutSeconds: 5
+          failureThreshold: 6
       volumes:
       - name: mysql-data
         persistentVolumeClaim:
