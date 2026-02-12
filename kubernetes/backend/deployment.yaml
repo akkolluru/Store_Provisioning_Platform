@@ -26,7 +26,7 @@ spec:
         prometheus.io/port: "3000"
         prometheus.io/path: "/metrics"
     spec:
-      serviceAccountName: store-service
+      serviceAccountName: store-provisioner
       containers:
       - name: store-service
         image: store-service:v1.2.3

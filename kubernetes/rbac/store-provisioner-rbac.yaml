@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: store-provisioner
+  namespace: store-platform
+  labels:
+    app: store-provisioning-platform
+    component: provisioner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: store-provisioner-role
+  labels:
+    app: store-provisioning-platform
+    component: provisioner
+rules:
+# Namespace management - create/delete store namespaces
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "create", "delete", "watch"]
+
+# ConfigMaps and Secrets - for Helm releases and store config
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# Services - for WordPress and MySQL services
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# PersistentVolumeClaims - for store data persistence
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# Pods - for health checks and log inspection
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+
+# Deployments and StatefulSets - for WordPress and MySQL
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "replicasets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete", "watch"]
+
+# Ingress - for store URL routing
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# NetworkPolicies - for store isolation
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# ResourceQuotas and LimitRanges - for resource limits
+- apiGroups: [""]
+  resources: ["resourcequotas", "limitranges"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# Events - for debugging and audit trail
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: store-provisioner-binding
+  labels:
+    app: store-provisioning-platform
+    component: provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: store-provisioner-role
+subjects:
+- kind: ServiceAccount
+  name: store-provisioner
+  namespace: store-platform
