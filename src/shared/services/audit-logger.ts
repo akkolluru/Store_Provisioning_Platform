@@ -13,14 +13,9 @@ export interface AuditLogEntry {
     userAgent?: string;
 }
 
-/**
- * Audit Logging Service
- * Provides comprehensive audit trail for all critical operations
- */
+/** Audit logging service — records all critical store operations to the database. */
 export class AuditLogger {
-    /**
-     * Log an audit event to the database
-     */
+    /** Log an audit event to the database. */
     static async log(entry: AuditLogEntry): Promise<void> {
         try {
             const dbManager = getDatabaseManager();
@@ -46,14 +41,12 @@ export class AuditLogger {
 
             console.log(`[AuditLog] ${entry.action} ${entry.resourceType} ${entry.resourceId || entry.resourceName || ''}`);
         } catch (error) {
-            // Don't throw - audit logging failure shouldn't break the request
+            // Audit logging failure should not break the request
             console.error('[AuditLog] Failed to write audit log:', error);
         }
     }
 
-    /**
-     * Get client IP address from request
-     */
+    /** Extract client IP from request headers or socket. */
     static getClientIp(req: Request): string {
         return (
             (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -63,22 +56,15 @@ export class AuditLogger {
         );
     }
 
-    /**
-     * Express middleware to automatically log API requests
-     */
+    /** Express middleware to automatically log store lifecycle events. */
     static middleware() {
         return (req: Request, res: Response, next: NextFunction) => {
-            // Store original send
             const originalSend = res.send;
 
-            // Override send to capture response
             res.send = function (data: any): Response {
-                // Restore original send
                 res.send = originalSend;
 
-                // Log based on method and status
                 if (req.method === 'POST' && res.statusCode === 201) {
-                    // Store creation
                     try {
                         const responseData = typeof data === 'string' ? JSON.parse(data) : data;
                         if (responseData.store) {
@@ -99,7 +85,6 @@ export class AuditLogger {
                         console.error('[AuditLog] Failed to parse response for logging:', err);
                     }
                 } else if (req.method === 'DELETE' && res.statusCode === 200) {
-                    // Store deletion
                     const storeId = req.params.id;
                     if (storeId) {
                         AuditLogger.log({

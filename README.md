@@ -1,551 +1,634 @@
 # Store Provisioning Platform
 
-> **Enterprise-grade retail store infrastructure automation platform** with production-ready security, scalability, and reliability patterns.
-
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)]()
-[![Test Coverage](https://img.shields.io/badge/coverage-80%25-green)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
-
-## 🎯 Overview
-
-The Store Provisioning Platform automates the complete infrastructure setup for retail stores, including:
-- **Hardware provisioning** (POS systems, printers, scanners)
-- **Network configuration** (VLAN setup, firewall rules)
-- **Software deployment** (applications, updates, configurations)
-- **Security management** (credentials, certificates, access control)
-
-### Key Features
-
-✅ **Vault Integration** - Dynamic secrets with 1-hour lease, encryption-at-rest  
-✅ **Database Failover** - Automatic primary/replica switching with health checks  
-✅ **Circuit Breakers** - Fail-fast & fail-closed patterns for resilience  
-✅ **Input Sanitization** - XSS/injection prevention with DOMPurify + Validator.js  
-✅ **Optimistic Locking** - Prevents lost updates in high-concurrency scenarios  
-✅ **Production-Ready** - Strict TypeScript, 0 lint errors, comprehensive logging  
-✅ **CI/CD Pipeline** - Automated testing, building, deployment with GitHub Actions
+> Automated WooCommerce store provisioning on Kubernetes — from one-click creation to full lifecycle management.
 
 ---
 
-## 🔄 CI/CD Pipeline
+## Table of Contents
 
-### Workflows
-
-- **Backend CI** (`backend-ci.yml`): Runs on PRs
-  - TypeScript compilation, linting, tests, build verification
-
-- **Frontend CI** (`frontend-ci.yml`): Runs on PRs  
-  - TypeScript compilation, linting, Vite build, Lighthouse testing
-
-- **Backend CD** (`backend-cd.yml`): Runs on merge to main
-  - Docker build → Push to `ghcr.io/.../backend:latest`
-
-- **Frontend CD** (`frontend-cd.yml`): Runs on merge to main
-  - Docker build → Push to `ghcr.io/.../frontend:latest`
-
-- **Security Scan** (`security-scan.yml`): Weekly + on PRs
-  - npm audit, Trivy container scan, CodeQL analysis
-
-### Deployment
-
-```bash
-# Deploy latest images
-./scripts/deploy.sh development latest
-
-# Deploy specific version  
-./scripts/deploy.sh production v1.0.0
-```
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Quick Start (Local)](#quick-start-local)
+- [Creating a Store & Placing an Order](#creating-a-store--placing-an-order)
+- [API Reference](#api-reference)
+- [Helm Charts](#helm-charts)
+- [Security](#security)
+- [Production Deployment (VPS / k3s)](#production-deployment-vps--k3s)
+- [System Design Notes](#system-design-notes)
+- [Project Structure](#project-structure)
+- [Development](#development)
 
 ---
 
-## 🏗️ Architecture
+## Overview
 
-```
-┌──────────────────── CLIENT ────────────────────┐
-                        │
-                        ▼
-            ┌─────────────────────┐
-            │   Express REST API  │
-            │  (Port 3000)        │
-            └─────────┬───────────┘
-                      │
-        ┌─────────────┼─────────────┐
-        │             │             │
-        ▼             ▼             ▼
-┌──────────┐  ┌────────────┐  ┌──────────┐
-│  Vault   │  │ PostgreSQL │  │ Circuit  │
-│ Service  │  │  Primary   │  │ Breakers │
-└──────────┘  └────┬───────┘  └──────────┘
-                   │
-                   ▼
-            ┌──────────────┐
-            │  Replica(s)  │
-            └──────────────┘
-```
+The Store Provisioning Platform automates the deployment of isolated WooCommerce stores on Kubernetes. Each store gets its own namespace, database, persistent storage, Ingress route, and network isolation — all provisioned via a single API call.
+
+### What It Does
+
+1. **One-click store creation** — Click "Create Store" in the dashboard, get a fully functional WooCommerce shop.
+2. **Automatic setup** — WordPress, WooCommerce, and Storefront theme are installed automatically. No manual setup required.
+3. **Namespace isolation** — Each store runs in its own Kubernetes namespace with ResourceQuotas, LimitRanges, and NetworkPolicies.
+4. **Lifecycle management** — Create, monitor, and delete stores. Deletion cleans up all resources (Helm release, namespace, PVCs).
+5. **Same charts, any environment** — Runs on Minikube locally and k3s/cloud in production with only `values-*.yaml` changes.
+
+### Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 18, TypeScript, Material-UI, Vite |
+| **Backend** | Node.js, Express, TypeScript (strict mode) |
+| **Database** | PostgreSQL 14+ |
+| **Orchestration** | Kubernetes, Helm 3 |
+| **Store Engine** | WordPress 6.9.1 + WooCommerce 10.5.1 |
+| **Ingress** | NGINX Ingress Controller |
+| **Security** | RBAC, NetworkPolicies, rate limiting, input sanitization |
 
 ---
 
-## 🚀 Quick Start
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        USER BROWSER                         │
+│                      http://localhost:4000                   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   FRONTEND (React + Vite)                    │
+│  Dashboard │ Store List │ Create Store Wizard │ Metrics      │
+└──────────────────────────┬───────────────────────────────────┘
+                           │  /api/*  (Vite proxy)
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   BACKEND (Express API)                      │
+│                    http://localhost:3000                      │
+│                                                              │
+│  ┌────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
+│  │  Rate       │  │  Input       │  │  Audit Logger        │ │
+│  │  Limiter    │  │  Sanitizer   │  │  (who did what)      │ │
+│  └────────────┘  └──────────────┘  └──────────────────────┘ │
+│                           │                                  │
+│  ┌────────────────────────▼─────────────────────────────┐   │
+│  │                  Helm Service                         │   │
+│  │  installStore() │ uninstallStore() │ getStatus()      │   │
+│  └────────────────────────┬─────────────────────────────┘   │
+└───────────────────────────┼──────────────────────────────────┘
+                            │  helm install / uninstall
+           ┌────────────────▼────────────────┐
+           │        KUBERNETES CLUSTER       │
+           │                                 │
+           │  ┌──────────────────────────┐   │
+           │  │  Namespace: store-<uuid> │   │
+           │  │  ┌────────┐ ┌─────────┐  │   │
+           │  │  │WordPress│ │  MySQL  │  │   │
+           │  │  │  6.9.1  │ │  8.0    │  │   │
+           │  │  │+WooCom. │ │         │  │   │
+           │  │  └────────┘ └─────────┘  │   │
+           │  │  ┌────────┐ ┌─────────┐  │   │
+           │  │  │Ingress │ │ Network │  │   │
+           │  │  │<sub>.  │ │ Policy  │  │   │
+           │  │  │ local  │ │(isolate)│  │   │
+           │  │  └────────┘ └─────────┘  │   │
+           │  │  ResourceQuota │ LimitRange │ │
+           │  └──────────────────────────┘   │
+           │                                 │
+           │  (Repeated per store)           │
+           └─────────────────────────────────┘
+```
+
+**Key design decisions:**
+- **Namespace-per-store** — Each store is fully isolated. No cross-store network access by default.
+- **Async provisioning** — The API returns `201 PROVISIONING` immediately; Helm install runs in the background and updates the DB status to `ready` or `failed`.
+- **Helm-only deployment** — No Kustomize. All config differences (local vs. prod) live in `values-*.yaml`.
+
+---
+
+## Quick Start (Local)
 
 ### Prerequisites
 
-- Node.js 20+
-- PostgreSQL 14+
-- HashiCorp Vault
-- Docker (for local development)
+| Tool | Version | Purpose |
+|---|---|---|
+| **Node.js** | 20+ | Backend + Frontend |
+| **Docker Desktop** | Latest | Container runtime |
+| **Minikube** | Latest | Local Kubernetes cluster |
+| **Helm** | 3.x | Chart deployment |
+| **PostgreSQL** | 14+ | Store metadata DB |
 
-### Installation
+### Step 1: Clone & Install
 
 ```bash
-# Clone repository
 git clone <repository-url>
 cd Store_Provisioning_Platform
 
-# Install dependencies
+# Backend dependencies
 npm install
 
-# Setup environment
-cp .env.example .env
-# Edit .env with your configurations
+# Frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
-### Local Development
+### Step 2: Start Infrastructure
 
 ```bash
-# Start Vault (Docker)
-docker run -d --name=vault \
-  -p 8200:8200 \
-  --cap-add=IPC_LOCK \
-  vault:latest
+# Start Minikube
+minikube start --memory=4096 --cpus=2
 
-# Start PostgreSQL (Docker)
-docker run -d --name=postgres \
-  -e POSTGRES_PASSWORD=secret \
-  -p 5432:5432 \
-  postgres:14
+# Enable NGINX Ingress controller
+minikube addons enable ingress
 
-# Create database schema
-psql -h localhost -U postgres -d postgres -c "
-CREATE TABLE stores (
-  id UUID PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  status VARCHAR(20) NOT NULL,
-  config JSONB DEFAULT '{}',
-  version INTEGER NOT NULL DEFAULT 1,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-"
+# Start Minikube tunnel (keep this running in a separate terminal)
+# This assigns 127.0.0.1 to LoadBalancer services
+minikube tunnel
+```
 
-# Set environment variables
-export VAULT_ADDR=http://localhost:8200
-export VAULT_TOKEN=root
-export DATABASE_URL=postgresql://postgres:secret@localhost:5432/postgres
+### Step 3: Patch Ingress Controller
 
-# Start development server
+```bash
+# Change Ingress controller to LoadBalancer so minikube tunnel works
+kubectl patch svc ingress-nginx-controller -n ingress-nginx \
+  -p '{"spec": {"type": "LoadBalancer"}}'
+```
+
+### Step 4: Set Up the Database
+
+```bash
+# Create the stores table
+psql -U <your-user> -d postgres -f database/migrations/001_create_stores_table.sql
+psql -U <your-user> -d postgres -f database/migrations/002_create_audit_logs.sql
+```
+
+### Step 5: Apply RBAC
+
+```bash
+kubectl apply -f kubernetes/rbac/
+```
+
+### Step 6: Start the Application
+
+```bash
+# Terminal 1: Backend
 npm run dev
+# Starts on http://localhost:3000
+
+# Terminal 2: Frontend
+cd frontend && npm run dev
+# Starts on http://localhost:4000
 ```
 
-Server will start on `http://localhost:3000`
+### Step 7: Open the Dashboard
 
-### Accessing Store URLs (Ingress Configuration)
-
-When stores are created, they use Kubernetes Ingress for routing with nginx ingress controller. For store URLs to work on your local machine, you need to configure DNS resolution.
-
-#### Automatic Configuration (Recommended)
-
-Run the helper script to automatically add all store subdomains to `/etc/hosts`:
-
-```bash
-# Add all active store subdomains to /etc/hosts
-sudo ./scripts/configure-store-dns.sh
-
-# This will:
-# 1. Get Minikube IP
-# 2. Find all ingress hostnames
-# 3. Add entries like: 192.168.49.2  mystore.local
-```
-
-After running this script, you can access stores in your browser:
-- `http://mystore.local`
-- `http://shop1.local`
-- etc.
-
-#### Manual Configuration
-
-Alternatively, manually add entries to `/etc/hosts`:
-
-```bash
-# Get Minikube IP
-minikube ip
-# Example output: 192.168.49.2
-
-# Edit /etc/hosts
-sudo nano /etc/hosts
-
-# Add line:
-192.168.49.2  mystore.local
-```
-
-#### Cleanup
-
-To remove store DNS entries when deleting stores:
-
-```bash
-# Remove all store entries
-sudo ./scripts/cleanup-store-dns.sh
-
-# Remove specific subdomain only
-sudo ./scripts/cleanup-store-dns.sh mystore
-```
+Navigate to **http://localhost:4000** in your browser. You should see the Store Provisioning Dashboard.
 
 ---
 
-## 📡 API Endpoints
+## Creating a Store & Placing an Order
+
+### 1. Create a Store
+
+- Open the dashboard at `http://localhost:4000`
+- Click **"Create Store"**
+- Enter a store name (e.g., `myshop`) and subdomain
+- Select the WooCommerce engine
+- Click **Submit**
+
+The store status will change: `Provisioning` → `Ready` (takes 2-5 minutes on first run due to Docker image pulls).
+
+### 2. Access the Store
+
+Once the store status shows **Ready**, the store URL will appear (e.g., `http://myshop.local`).
+
+**Add the DNS entry** (required for local development):
+```bash
+echo '127.0.0.1  myshop.local  # store-provisioning-platform' | sudo tee -a /etc/hosts
+```
+
+Open `http://myshop.local` in your browser — you'll see the WooCommerce Storefront.
+
+### 3. Place a Test Order
+
+1. Browse the store and **add a product to the cart**
+2. Go to **Checkout**
+3. Fill in test details and select **"Cash on Delivery"** as the payment method
+4. Click **Place Order**
+
+### 4. Confirm the Order in WP Admin
+
+1. Go to `http://myshop.local/wp-admin`
+2. Login with `admin` / `admin123`
+3. Navigate to **WooCommerce → Orders**
+4. Verify the order exists
+
+### 5. Delete a Store
+
+- In the dashboard, click the **delete button** next to the store
+- Confirm deletion
+- All resources (Helm release, namespace, PVCs) are cleaned up automatically
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:3000/api`
 
 ### Health Checks
 
-```bash
-# Basic health
-GET /health
-# Response: {"status": "healthy", "service": "store-service"}
-
-# Readiness check
-GET /ready
-# Response: {"status": "ready"}
-```
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Service health status |
+| `/ready` | GET | Readiness check |
 
 ### Store Management
 
 #### List All Stores
-```bash
-GET /api/stores
 
-# Response:
+```
+GET /api/stores
+```
+
+**Response** `200 OK`:
+```json
 {
   "stores": [
     {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Downtown Store",
-      "status": "ACTIVE",
-      "config": {},
-      "version": 1
+      "id": "f555bec2-fd29-40c9-8176-d5b9902fb44d",
+      "name": "myshop",
+      "status": "ready",
+      "engine": "woocommerce",
+      "url": "http://myshop.local",
+      "namespace": "store-f555bec2-fd29-40c9-8176-d5b9902fb44d",
+      "config": { "engine": "woocommerce", "subdomain": "myshop" },
+      "version": 1,
+      "created_at": "2026-02-11T17:25:12.543Z",
+      "updated_at": "2026-02-11T17:25:56.774Z"
     }
   ],
   "count": 1
 }
 ```
 
+#### Get Single Store
+
+```
+GET /api/stores/:id
+```
+
+**Response** `200 OK`: Single store object.
+**Response** `404 Not Found`: `{ "error": "NOT_FOUND" }`
+
 #### Create Store
-```bash
+
+```
 POST /api/stores
 Content-Type: application/json
+```
 
+**Request body**:
+```json
 {
-  "name": "New Store",
-  "config": {"region": "US-WEST"}
+  "name": "myshop",
+  "config": {
+    "engine": "woocommerce",
+    "subdomain": "myshop"
+  }
 }
+```
 
-# Response:
+**Response** `201 Created`:
+```json
 {
   "store": {
-    "id": "a3bb189e-8bf9-3888-9912-ace4e6543002",
-    "name": "New Store",
-    "status": "PROVISIONING",
-    "version": 1
+    "id": "f555bec2-...",
+    "name": "myshop",
+    "status": "provisioning",
+    "url": null,
+    "namespace": null
   },
-  "message": "Store created successfully"
+  "message": "Store provisioning initiated. Check status for updates."
 }
 ```
 
-#### Update Store (with Optimistic Locking)
-```bash
+**Rate limit**: 5 stores per 15 minutes per IP.
+**Quota**: Configurable maximum active stores.
+
+#### Update Store
+
+```
 PUT /api/stores/:id
 Content-Type: application/json
+```
 
+**Request body** (optimistic locking via `version`):
+```json
 {
-  "status": "ACTIVE",
-  "version": 1  # Required for concurrency control
-}
-
-# Success Response:
-{
-  "store": { ... },
-  "message": "Store updated successfully"
-}
-
-# Conflict Response (version mismatch):
-{
-  "error": "CONCURRENCY_ERROR",
-  "message": "Store was modified by another request. Please refresh."
+  "name": "Updated Name",
+  "version": 1
 }
 ```
 
+**Response** `200 OK`: Updated store object.
+**Response** `409 Conflict`: Version mismatch (concurrent modification).
+
+#### Delete Store
+
+```
+DELETE /api/stores/:id
+```
+
+**Response** `200 OK`:
+```json
+{
+  "message": "Store deleted successfully",
+  "store": { ... }
+}
+```
+
+Deleting a store:
+1. Uninstalls the Helm release
+2. Deletes the Kubernetes namespace (and all resources within it)
+3. Marks the database record as `decommissioned`
+
 ---
 
-## 🧪 Testing
+## Helm Charts
+
+### Chart Structure
+
+```
+helm/woocommerce/
+├── Chart.yaml                              # Chart metadata (appVersion: 6.9.1)
+├── values.yaml                             # Default values
+├── values-local.yaml                       # Local overrides (Minikube)
+├── values-prod.yaml                        # Production overrides (VPS/Cloud)
+└── templates/
+    ├── namespace.yaml                      # Store namespace
+    ├── secret.yaml                         # MySQL credentials
+    ├── pvc.yaml                            # Persistent volumes (WordPress + MySQL)
+    ├── mysql-statefulset.yaml              # MySQL 8.0 StatefulSet
+    ├── mysql-service.yaml                  # MySQL ClusterIP service
+    ├── wordpress-deployment.yaml           # WordPress 6.9.1 Deployment
+    ├── wordpress-service.yaml              # WordPress service
+    ├── setup-woocommerce-configmap.yaml    # Auto-setup script (WP-CLI + WooCommerce)
+    ├── ingress.yaml                        # NGINX Ingress rule
+    ├── networkpolicy.yaml                  # Network isolation
+    ├── resourcequota.yaml                  # Resource limits per namespace
+    └── limitrange.yaml                     # Default container limits
+```
+
+### Local vs. Production Differences
+
+| Setting | `values-local.yaml` | `values-prod.yaml` |
+|---|---|---|
+| **Domain** | `local` | `yourdomain.com` |
+| **Storage class** | `standard` (Minikube) | `do-block-storage` (cloud) |
+| **Storage size** | 2Gi | 10Gi |
+| **WordPress replicas** | 1 | 2 (HA) |
+| **TLS** | Disabled | Enabled (cert-manager) |
+| **CPU requests** | 100m | 500m |
+| **Memory requests** | 256Mi | 512Mi |
+| **Ingress body size** | 50m | 100m |
+
+### WooCommerce Auto-Setup
+
+The `setup-woocommerce-configmap.yaml` contains a script that runs automatically via a `postStart` lifecycle hook:
+
+1. Waits for WordPress files and database connection
+2. Downloads and installs WP-CLI
+3. Runs `wp core install` (creates admin user: `admin` / `admin123`)
+4. Installs and activates WooCommerce plugin (latest version)
+5. Installs and activates Storefront theme
+6. Configures permalinks (`/%postname%/`)
+7. Writes a marker file to prevent re-running on pod restarts
+
+---
+
+## Security
+
+### RBAC (Least-Privilege Access)
+
+The provisioning service uses a dedicated `store-provisioner` ServiceAccount with a ClusterRole granting only the permissions needed:
+
+**Allowed**:
+- Create/delete namespaces (for store isolation)
+- Manage deployments, services, PVCs, ingress (for store resources)
+- Apply NetworkPolicies, ResourceQuotas, LimitRanges
+- Read pods and events (for health checks and debugging)
+
+**Denied**:
+- Node management
+- Cluster-admin operations
+- Access to other services' namespaces
 
 ```bash
-# Run all tests
-npm test
+# Verify permissions
+kubectl auth can-i create namespaces \
+  --as=system:serviceaccount:store-platform:store-provisioner
+# yes
 
-# Run with coverage
-npm run test:coverage
+kubectl auth can-i delete nodes \
+  --as=system:serviceaccount:store-platform:store-provisioner
+# no
+```
 
-# Watch mode
-npm run test:watch
+### Network Isolation
 
-# Linting
-npm run lint
-npm run lint:fix
+Each store namespace has a `NetworkPolicy` that:
+- **Denies all ingress** except from the NGINX Ingress controller
+- **Denies all egress** except DNS (port 53), HTTPS (port 443), and intra-namespace communication
+- **No cross-store traffic** — Store A cannot reach Store B
+
+### Rate Limiting & Abuse Prevention
+
+| Middleware | Limit | Scope |
+|---|---|---|
+| `createStoreRateLimiter` | 5 stores / 15 min | Per IP |
+| `storeQuotaChecker` | Configurable max active stores | Global |
+| `generalApiRateLimiter` | 100 requests / 15 min | Per IP |
+| `deleteStoreRateLimiter` | 10 deletes / 15 min | Per IP |
+
+### Input Sanitization
+
+All user input is sanitized through:
+- **DOMPurify** — Strips XSS vectors (HTML, scripts)
+- **validator.js** — Validates formats, blocks SQL injection patterns
+- **Joi schemas** — Validates request body structure and types
+
+### Audit Logging
+
+All store lifecycle events (create, update, delete) are logged to the `audit_logs` table:
+```sql
+-- Fields: id, action, entity_type, entity_id, actor, details, timestamp
+SELECT * FROM audit_logs ORDER BY created_at DESC;
 ```
 
 ---
 
-## 📦 Project Structure
+## Production Deployment (VPS / k3s)
+
+### What Changes for Production
+
+The same Helm charts are used — only the values file changes. Key differences:
+
+```bash
+# Local (Minikube)
+helm install store-xxx ./helm/woocommerce \
+  -f ./helm/woocommerce/values-local.yaml
+
+# Production (k3s on VPS)
+helm install store-xxx ./helm/woocommerce \
+  -f ./helm/woocommerce/values-prod.yaml \
+  --set domain=yourdomain.com
+```
+
+### Configuration Changes Required
+
+| Component | Local | Production |
+|---|---|---|
+| **DNS** | `/etc/hosts` entries | Real DNS records (A/CNAME) |
+| **Domain** | `*.local` | `*.yourdomain.com` |
+| **TLS** | None | cert-manager + Let's Encrypt |
+| **Storage** | Minikube `standard` | Cloud block storage |
+| **Ingress** | Minikube tunnel | Cloud LoadBalancer / NodePort |
+| **Database** | Local PostgreSQL | Managed DB (RDS, Cloud SQL) or in-cluster |
+| **Secrets** | Local .env | Kubernetes Secrets / Vault |
+
+### High-Level Steps
+
+1. **Provision a VPS** (e.g. DigitalOcean, Hetzner, AWS EC2)
+2. **Install k3s**: `curl -sfL https://get.k3s.io | sh -`
+3. **Install Helm**: `curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
+4. **Set up NGINX Ingress + cert-manager** for TLS
+5. **Point DNS** `*.yourdomain.com` → VPS IP
+6. **Deploy PostgreSQL** (managed or in-cluster)
+7. **Deploy the backend** with production environment variables
+8. **Create stores** using `values-prod.yaml`
+
+---
+
+## System Design Notes
+
+### Idempotency
+
+- **Helm `releaseExists()` check** — Before installing, the service checks if a release already exists. Duplicate creation requests return an error instead of creating orphaned resources.
+- **Optimistic locking** — Store updates use a `version` field. Concurrent modifications are rejected with a `409 Conflict` instead of silently overwriting.
+
+### Failure Handling & Cleanup
+
+- **Async provisioning** — The API returns `201 PROVISIONING` immediately. If Helm install fails, the store status is updated to `failed` in the database.
+- **Automatic cleanup on failure** — If `installStore()` throws, the catch block attempts `uninstallStore()` to clean up any partial resources.
+- **Safe deletion** — `DELETE /api/stores/:id` first uninstalls the Helm release and namespace, then updates the database record. If Helm uninstall fails, the database update still proceeds.
+
+### Recovery on Restart
+
+- **Source of truth is the database** — Store status is persisted in PostgreSQL. If the backend restarts mid-provisioning, stores stuck in `provisioning` status can be detected and re-checked via `getStoreStatus()`.
+- **Helm is declarative** — Re-running `helm install` on an existing release is idempotent (it errors gracefully, not destructively).
+
+### Scalability Considerations
+
+- **Concurrent provisioning** — Multiple stores can be provisioned simultaneously since each runs in its own namespace and Helm install is async.
+- **ResourceQuotas** — Each store namespace has CPU/memory limits to prevent any single store from consuming cluster resources.
+- **Horizontal scaling** — The backend is stateless (state lives in PostgreSQL). Multiple backend replicas can run behind a load balancer.
+
+---
+
+## Project Structure
 
 ```
 Store_Provisioning_Platform/
-├── src/
-│   ├── shared/
-│   │   ├── services/
-│   │   │   └── vault-service.ts          # Vault integration with circuit breaker
-│   │   ├── database/
-│   │   │   └── connection-manager.ts     # DB failover & health checks
-│   │   └── middleware/
-│   │       └── circuit-breaker.middleware.ts  # Service circuit breakers
+├── src/                                    # Backend source code
 │   ├── store-service/
-│   │   ├── app.ts                        # Main Express application
-│   │   ├── routes/
-│   │   │   └── stores.ts                 # REST API endpoints
-│   │   └── models/
-│   │       └── store.ts                  # Data models & validation
-│   └── __tests__/
-│       ├── vault-service.test.ts
-│       └── integration/
-├── documentation/
-│   ├── DEVELOPMENT_GUIDE.md              # Comprehensive development guide
-│   ├── IMPLEMENTATION_PLAN.md            # Original implementation plan
-│   └── TASK_BREAKDOWN.md                 # Phase-by-phase task breakdown
-├── package.json
-├── tsconfig.json
-├── jest.config.js
-└── README.md
+│   │   ├── app.ts                          # Express application setup
+│   │   ├── routes/stores.ts                # REST API endpoints
+│   │   └── models/store.ts                 # Data models & Joi schemas
+│   └── shared/
+│       ├── services/
+│       │   ├── helm-service.ts             # Helm orchestration (install/uninstall/status)
+│       │   ├── audit-logger.ts             # Audit log service
+│       │   └── vault-service.ts            # Vault integration (optional)
+│       ├── database/
+│       │   ├── db-instance.ts              # Database connection singleton
+│       │   └── connection-manager.ts       # Connection pooling & failover
+│       └── middleware/
+│           ├── rate-limiter.middleware.ts   # Rate limiting & store quotas
+│           └── circuit-breaker.middleware.ts
+├── frontend/                               # React frontend
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx               # Metrics overview
+│   │   │   ├── StoreList.tsx               # Store list with CRUD
+│   │   │   └── StoreWizard.tsx             # Store creation wizard
+│   │   ├── services/
+│   │   │   ├── api.ts                      # Axios instance
+│   │   │   └── storeApi.ts                 # Store API client
+│   │   └── components/                     # Reusable UI components
+│   └── vite.config.ts                      # Vite config (port 4000, API proxy)
+├── helm/
+│   └── woocommerce/                        # WooCommerce Helm chart
+│       ├── Chart.yaml
+│       ├── values.yaml                     # Default values
+│       ├── values-local.yaml               # Local (Minikube) overrides
+│       ├── values-prod.yaml                # Production (VPS) overrides
+│       └── templates/                      # Kubernetes manifest templates
+├── kubernetes/
+│   ├── rbac/                               # RBAC manifests
+│   │   ├── namespace.yaml                  # store-platform namespace
+│   │   └── store-provisioner-rbac.yaml     # ServiceAccount, ClusterRole, Binding
+│   ├── backend/                            # Backend K8s deployment
+│   ├── frontend/                           # Frontend K8s deployment
+│   └── isolation/                          # ResourceQuota & NetworkPolicy templates
+├── database/
+│   └── migrations/
+│       ├── 001_create_stores_table.sql
+│       └── 002_create_audit_logs.sql
+├── scripts/                                # Helper scripts
+│   ├── configure-store-dns.sh              # Auto-configure /etc/hosts
+│   └── deploy.sh                           # Deployment script
+└── package.json
 ```
 
 ---
 
-## 🔒 Security Features
+## Development
 
-### 1. Secret Management (Vault)
-- Dynamic database credentials (auto-expire in 1 hour)
-- Encryption-at-rest using Transit engine
-- No hardcoded secrets in codebase
-- Automatic credential rotation
-
-### 2. Input Validation & Sanitization
-- **DOMPurify**: Removes XSS vectors (HTML, scripts)
-- **Validator.js**: Prevents SQL injection, validates formats
-- **Joi**: Schema validation for API requests
-- **Prototype Pollution Protection**: Blocks `__proto__`, `constructor`, `prototype` keys
-
-### 3. Network Security
-- TLS enabled for Vault connections
-- Restricted PostgreSQL `pg_hba` configuration
-- Connection pooling with limits
-- Request ID tracing for audit trails
-
-### 4. Operational Security
-- **Fail-Closed Pattern**: Security service down = deny all access
-- Circuit breakers prevent cascading failures
-- Comprehensive error logging (no sensitive data leaks)
-
----
-
-## 🎛️ Configuration
-
-### Environment Variables
+### Build & Test
 
 ```bash
-# Vault Configuration
-VAULT_ADDR=http://localhost:8200        # Vault server address
-VAULT_TOKEN=root                        # Vault authentication token
+# TypeScript compilation check
+npx tsc --noEmit
 
-# Database Configuration
-DATABASE_URL=postgresql://user:pass@host:5432/db  # Primary DB connection
-DATABASE_URL_FALLBACK=postgresql://...  # Fallback if Vault unavailable
+# Run tests
+npm test
 
-# Application Configuration
-PORT=3000                               # Server port
-NODE_ENV=development                    # Environment (development|production)
+# Lint
+npm run lint
 
-# Redis Configuration (for circuit breaker cache)
-REDIS_URL_FALLBACK=redis://localhost:6379
+# Build for production
+npm run build
 ```
 
-### Circuit Breaker Settings
+### Code Standards
 
-| Service | Timeout | Error Threshold | Fallback Strategy |
-|---------|---------|-----------------|-------------------|
-| Store Service | 15s | 50% | Cache + Queue |
-| Hardware Service | 30s | 40% | Cache + Queue |
-| **Security Service** | 20s | 30% | **FAIL CLOSED** |
-
----
-
-## 📈 Performance & Scalability
-
-### Database Layer
-- **Read/Write Splitting**: Reads use replicas, writes use primary
-- **Connection Pooling**: Max 20 connections per pool
-- **Health Checks**: Every 30-45 seconds
-- **Automatic Failover**: Promotes replicas on primary failure
-
-### Caching Strategy
-- Stale data served during service degradation
-- Metadata included (`isStale`, `nextRetry`)
-- Write operations queued for later processing
-
-### Kubernetes Deployment
-```yaml
-# HorizontalPodAutoscaler
-minReplicas: 3
-maxReplicas: 10
-targetCPUUtilizationPercentage: 70
-
-# Resources
-requests:
-  cpu: 500m
-  memory: 512Mi
-limits:
-  cpu: 1000m
-  memory: 1Gi
-```
-
----
-
-## 🛠️ Development
-
-### Code Quality Standards
-
-- **TypeScript Strict Mode**: No `any` types allowed
-- **ESLint**: AirBnB style guide with TypeScript rules
-- **Prettier**: Automatic code formatting
-- **Test Coverage**: Minimum 80% threshold
-- **Commits**: Atomic, conventional commits format
+- **TypeScript strict mode** — No implicit `any`, strict null checks
+- **Early returns** — Guard clauses instead of nested if/else
+- **Exhaustive error handling** — All async operations have try/catch
+- **Conventional commits** — `feat:`, `fix:`, `docs:` prefixes
+- **Input validation** — All API inputs validated via Joi schemas and sanitized
 
 ### Git Workflow
 
 ```bash
-# Feature branch
-git checkout -b feature/your-feature
+# Atomic commits for each change
+git add <files>
+git commit -m "feat: description of change"
 
-# Make changes, commit atomically
-git commit -m "feat: add new feature"
-
-# Run tests before pushing
-npm test && npm run build
-
-# Push and create PR
-git push origin feature/your-feature
-```
-
-### Incremental Development Protocol
-
-1. **Plan First**: Document changes in implementation plan
-2. **Build Incrementally**: One component at a time
-3. **Test After Each Component**: Run `npm run build && npm test`
-4. **Commit Atomically**: Small, focused commits
-5. **Quality First**: Strict types, early returns, error handling
-
----
-
-## 📚 Documentation
-
-- **[Development Guide](documentation/DEVELOPMENT_GUIDE.md)** - Complete walkthrough with examples
-- **[Implementation Plan](documentation/IMPLEMENTATION_PLAN.md)** - Original design & architecture
-- **[Task Breakdown](documentation/TASK_BREAKDOWN.md)** - Phase-by-phase checklist
-
----
-
-## 🚢 Deployment
-
-### Docker Build
-
-```bash
-# Build image
-docker build -t store-provisioning-platform .
-
-# Run container
-docker run -d \
-  -p 3000:3000 \
-  -e VAULT_ADDR=http://vault:8200 \
-  -e DATABASE_URL=postgresql://... \
-  store-provisioning-platform
-```
-
-### Kubernetes Deployment
-
-```bash
-# Apply manifests (from PRD)
-kubectl apply -f kubernetes/
-# Includes: deployment, service, hpa, configmap, secrets
+# Verify before pushing
+npx tsc --noEmit && npm test
 ```
 
 ---
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch
-3. Follow the Incremental Development Protocol
-4. Ensure tests pass and coverage ≥80%
-5. Submit a pull request
-
----
-
-## 📝 License
-
-MIT License - see [LICENSE](LICENSE) file for details
-
----
-
-## 🎓 Learning Resources
-
-### For Junior Developers
-
-**Circuit Breakers**
-> A circuit breaker prevents cascading failures. If Vault crashes, the breaker trips immediately instead of waiting 10s per request, keeping the system alive.
-
-**Optimistic Locking**
-> Prevents lost updates. If two users edit the same store, only the first save succeeds. The second gets rejected with a concurrency error.
-
-**Fail Closed vs Fail Open**
-> - **Fail Open**: Service down = allow access (prioritizes availability)
-> - **Fail Closed**: Service down = deny access (prioritizes security)
-> 
-> We use fail-closed for the security service to prevent unauthorized access.
-
----
-
-## 💡 Tech Stack
-
-- **Runtime**: Node.js 20+
-- **Language**: TypeScript 5.3 (Strict Mode)
-- **Framework**: Express.js
-- **Database**: PostgreSQL 14+ with pg driver
-- **Secrets**: HashiCorp Vault
-- **Validation**: Joi, Validator.js, DOMPurify
-- **Resilience**: Opossum (circuit breakers)
-- **Testing**: Jest, ts-jest
-- **Linting**: ESLint, Prettier
-
----
-
-## 📞 Support
-
-For issues, questions, or contributions, please open an issue on GitHub.
-
----
-
-**Built with ❤️ following incremental development best practices**
+MIT

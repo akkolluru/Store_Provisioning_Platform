@@ -31,13 +31,10 @@ export class HelmService {
         this.defaultDomain = 'local';
     }
 
-    /**
-     * Install a new store using Helm
-     */
+    /** Install a new store via Helm, returning its namespace and URL. */
     async installStore(options: HelmInstallOptions): Promise<{ namespace: string; url: string }> {
         const { storeName, subdomain, engine, domain = this.defaultDomain, environment = 'local' } = options;
 
-        // Validate engine
         if (engine !== 'woocommerce' && engine !== 'medusa') {
             throw new Error(`Unsupported engine: ${engine}. Must be 'woocommerce' or 'medusa'`);
         }
@@ -45,20 +42,17 @@ export class HelmService {
         const namespace = storeName;
         const fullDomain = `${subdomain}.${domain}`;
 
-        // Determine chart directory based on engine
         const chartDir = `${this.chartPath}/${engine}`;
         const valuesFile = environment === 'production'
             ? `${chartDir}/values-prod.yaml`
             : `${chartDir}/values-local.yaml`;
 
         try {
-            // Check if release already exists
             const exists = await this.releaseExists(storeName);
             if (exists) {
                 throw new Error(`Store ${storeName} already exists. Use update instead.`);
             }
 
-            // Install Helm chart into the store's own namespace
             const helmCommand = [
                 'helm install',
                 storeName,
@@ -84,12 +78,8 @@ export class HelmService {
             console.log(`[HelmService] Store ${storeName} installed successfully`);
             console.log(stdout);
 
-            // Apply isolation policies after successful install
-            console.log(`[HelmService] Applying isolation policies to namespace ${namespace}`);
             await this.applyIsolationPolicies(namespace);
-            console.log(`[HelmService] Isolation policies applied successfully`);
 
-            // Generate accessible URL based on environment
             const url = await this.generateStoreUrl(storeName, namespace, fullDomain, environment);
 
             return {
@@ -101,7 +91,7 @@ export class HelmService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[HelmService] Failed to install store ${storeName}:`, errorMessage);
 
-            // Cleanup on failure
+
             try {
                 await this.uninstallStore(storeName);
             } catch (cleanupError) {
@@ -127,18 +117,15 @@ export class HelmService {
             return `https://${fullDomain}`;
         }
 
-        // Local: Use Ingress-based URL with minikube tunnel
-        // The Ingress controller (LoadBalancer type) gets 127.0.0.1 via minikube tunnel
-        // /etc/hosts maps <subdomain>.local → 127.0.0.1
+        // Local: Ingress-based URL via minikube tunnel (127.0.0.1)
         const serviceName = `${storeName}-wordpress`;
 
         try {
-            // Wait for the service to be ready
-            console.log(`[HelmService] Waiting for service ${serviceName} in namespace ${namespace} to be ready...`);
+            console.log(`[HelmService] Waiting for service ${serviceName}...`);
 
             let serviceExists = false;
             let attempts = 0;
-            const maxAttempts = 30; // Wait up to 3 minutes (30 * 6 seconds)
+            const maxAttempts = 30;
 
             while (!serviceExists && attempts < maxAttempts) {
                 try {
@@ -151,19 +138,18 @@ export class HelmService {
                         break;
                     }
                 } catch (checkError) {
-                    console.warn(`[HelmService] Attempt ${attempts + 1} - Service ${serviceName} not ready yet:`, checkError);
+                    // Not ready yet, will retry
                 }
 
                 attempts++;
-                await new Promise(resolve => setTimeout(resolve, 6000)); // Wait 6 seconds between attempts
+                await new Promise(resolve => setTimeout(resolve, 6000));
             }
 
             if (!serviceExists) {
                 throw new Error(`Service ${serviceName} was not created in namespace ${namespace} after ${maxAttempts * 6} seconds`);
             }
 
-            // Wait for the Ingress resource to be ready
-            console.log(`[HelmService] Waiting for Ingress resource in namespace ${namespace}...`);
+            console.log(`[HelmService] Waiting for Ingress in ${namespace}...`);
             let ingressReady = false;
             let ingressAttempts = 0;
             const maxIngressAttempts = 10;
@@ -179,14 +165,14 @@ export class HelmService {
                         break;
                     }
                 } catch (ingressError) {
-                    console.warn(`[HelmService] Attempt ${ingressAttempts + 1} - Ingress not ready yet:`, ingressError);
+                    // Not ready yet, will retry
                 }
 
                 ingressAttempts++;
                 await new Promise(resolve => setTimeout(resolve, 3000));
             }
 
-            // Auto-configure /etc/hosts entry for the store domain
+
             await this.configureLocalDns(fullDomain);
 
             const url = `http://${fullDomain}`;
@@ -196,7 +182,7 @@ export class HelmService {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[HelmService] Failed to generate store URL: ${errorMessage}`);
 
-            // Provide more detailed error information
+
             try {
                 const listServicesCmd = `kubectl get services -n ${namespace}`;
                 const { stdout: servicesList } = await execAsync(listServicesCmd);
@@ -205,8 +191,7 @@ export class HelmService {
                 console.error(`[HelmService] Could not list services for debugging:`, listError);
             }
 
-            // Even if DNS config fails, still return the Ingress URL
-            // User can manually add the /etc/hosts entry
+            // DNS config is best-effort; return URL regardless
             const fallbackUrl = `http://${fullDomain}`;
             console.warn(`[HelmService] Returning Ingress URL as fallback: ${fallbackUrl}`);
             return fallbackUrl;
@@ -224,7 +209,6 @@ export class HelmService {
             const hostsFile = '/etc/hosts';
             const hostsContent = fs.readFileSync(hostsFile, 'utf8');
 
-            // Check if correct entry already exists
             const lines = hostsContent.split('\n');
             const existingEntry = lines.find(
                 line => line.includes(domain) && !line.trim().startsWith('#')
@@ -235,7 +219,6 @@ export class HelmService {
                 return;
             }
 
-            // Try to append without sudo (will only work if we have write permission)
             const marker = '# store-provisioning-platform';
             const entry = `127.0.0.1  ${domain}  ${marker}\n`;
 
@@ -243,7 +226,6 @@ export class HelmService {
                 fs.appendFileSync(hostsFile, entry);
                 console.log(`[HelmService] DNS entry added: 127.0.0.1 → ${domain}`);
             } catch {
-                // No write permission — log the manual command
                 console.warn(
                     `[HelmService] Cannot write to /etc/hosts (permission denied). ` +
                     `Run this to add DNS:\n` +
@@ -256,13 +238,10 @@ export class HelmService {
                 `[HelmService] Could not configure DNS for ${domain}: ${errorMessage}. ` +
                 `Please manually add: 127.0.0.1  ${domain}`
             );
-            // Don't throw — this is a best-effort operation
         }
     }
 
-    /**
-     * Uninstall a store
-     */
+    /** Uninstall a store's Helm release and delete its namespace. */
     async uninstallStore(storeName: string): Promise<void> {
         try {
             const helmCommand = `helm uninstall ${storeName} --namespace ${storeName} --wait --timeout=5m`;
@@ -273,7 +252,7 @@ export class HelmService {
             console.log(`[HelmService] Store ${storeName} uninstalled successfully`);
             console.log(stdout);
 
-            // Delete namespace (Helm doesn't delete namespaces it creates)
+
             try {
                 await execAsync(`kubectl delete namespace ${storeName} --timeout=2m`);
                 console.log(`[HelmService] Namespace ${storeName} deleted`);
@@ -291,9 +270,7 @@ export class HelmService {
         }
     }
 
-    /**
-     * Get status of a Helm release
-     */
+    /** Get the current status of a Helm release. */
     async getStoreStatus(storeName: string): Promise<HelmReleaseStatus> {
         try {
             const helmCommand = `helm status ${storeName} --output json`;
@@ -319,9 +296,7 @@ export class HelmService {
         }
     }
 
-    /**
-     * Check if a Helm release exists
-     */
+    /** Check if a Helm release already exists. */
     async releaseExists(storeName: string): Promise<boolean> {
         try {
             await execAsync(`helm status ${storeName}`);
@@ -331,9 +306,7 @@ export class HelmService {
         }
     }
 
-    /**
-     * List all deployed stores
-     */
+    /** List all deployed store releases across namespaces. */
     async listStores(): Promise<HelmReleaseStatus[]> {
         try {
             const helmCommand = 'helm list --output json --all-namespaces';
@@ -359,9 +332,7 @@ export class HelmService {
         }
     }
 
-    /**
-     * Check if Helm is installed
-     */
+    /** Check if Helm CLI is available. */
     async checkHelmInstalled(): Promise<boolean> {
         try {
             await execAsync('helm version');
@@ -371,10 +342,7 @@ export class HelmService {
         }
     }
 
-    /**
-     * Apply isolation policies (ResourceQuota, LimitRange, NetworkPolicies) to a namespace
-     * This enforces resource limits and network security for each store
-     */
+    /** Apply ResourceQuota, LimitRange, and NetworkPolicies to a store namespace. */
     async applyIsolationPolicies(namespace: string): Promise<void> {
         const policyDir = path.join(process.cwd(), 'kubernetes', 'isolation');
         const policies = [
@@ -390,25 +358,20 @@ export class HelmService {
             for (const policyFile of policies) {
                 const policyPath = path.join(policyDir, policyFile);
 
-                // Check if policy file exists
                 if (!fs.existsSync(policyPath)) {
                     console.warn(`[HelmService] Policy file not found: ${policyPath}`);
                     continue;
                 }
 
-                // Read policy template
                 let policyYaml = fs.readFileSync(policyPath, 'utf8');
 
-                // Replace namespace placeholder
                 policyYaml = policyYaml.replace(/{{ NAMESPACE }}/g, namespace);
 
-                // Write to temp file and apply
                 const tempFile = path.join('/tmp', `policy-${namespace}-${Date.now()}.yaml`);
                 fs.writeFileSync(tempFile, policyYaml, 'utf8');
 
                 const { stderr } = await execAsync(`kubectl apply -f ${tempFile}`);
 
-                // Cleanup temp file
                 fs.unlinkSync(tempFile);
 
                 if (stderr && !stderr.includes('created') && !stderr.includes('configured')) {

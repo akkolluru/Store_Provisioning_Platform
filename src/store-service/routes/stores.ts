@@ -15,24 +15,19 @@ import { createStoreRateLimiter, storeQuotaChecker } from '../../shared/middlewa
 
 const router = Router();
 
-/**
- * Input sanitization middleware
- */
+/** Strip HTML/scripts and enforce max length on string input. */
 function sanitizeInput(input: string): string {
     if (!input || typeof input !== 'string') {
         return '';
     }
 
-    // First, trim and validate
     const trimmed = validator.trim(input);
 
-    // Use DOMPurify to remove any HTML/script tags
     const purified = DOMPurify.sanitize(trimmed, {
         ALLOWED_TAGS: [], // No HTML tags allowed
         ALLOWED_ATTR: [],
     });
 
-    // Additional validation
     if (!validator.isLength(purified, { min: 0, max: 1000 })) {
         throw new Error('Input exceeds maximum length');
     }
@@ -40,17 +35,12 @@ function sanitizeInput(input: string): string {
     return purified;
 }
 
-/**
- * Sanitize object recursively
- */
+/** Recursively sanitize all string values in an object, blocking prototype pollution. */
 function sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
     const sanitized: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(obj)) {
-        // Prevent prototype pollution
-        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-            continue;
-        }
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
 
         if (typeof value === 'string') {
             sanitized[key] = sanitizeInput(value);
@@ -93,7 +83,7 @@ router.get('/stores', async (_req: Request, res: Response): Promise<void> => {
         const result = await dbManager.executeQuery(
             'SELECT * FROM stores WHERE decommissioned_at IS NULL ORDER BY created_at DESC',
             [],
-            { useReplica: true } // Use replica for read operations
+            { useReplica: true }
         );
 
         res.status(200).json({
@@ -117,7 +107,6 @@ router.get('/stores/:id', async (req: Request, res: Response): Promise<void> => 
     try {
         const { id } = req.params;
 
-        // Validate UUID format
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(id)) {
             res.status(400).json({
@@ -156,7 +145,6 @@ router.get('/stores/:id', async (req: Request, res: Response): Promise<void> => 
  */
 router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Request, res: Response): Promise<void> => {
     try {
-        // Validate request body
         const { error, value } = createStoreSchema.validate(req.body);
         if (error) {
             res.status(400).json({
@@ -166,13 +154,11 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
             return;
         }
 
-        // Sanitize input
         const sanitizedData: CreateStoreRequest = {
             name: sanitizeInput(value.name),
             config: value.config ? sanitizeObject(value.config) : {},
         };
 
-        // Extract engine and subdomain from config
         const engine = (value.config?.engine as 'woocommerce' | 'medusa') || 'woocommerce';
         const subdomain = sanitizeInput(value.config?.subdomain || sanitizedData.name.toLowerCase().replace(/\s+/g, '-'));
 
@@ -181,7 +167,6 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
         const id = uuidv4();
         const now = new Date();
 
-        // Step 1: Create DB record with PROVISIONING status
         const insertResult = await dbManager.executeQuery(
             `INSERT INTO stores (id, name, status, config, version, engine, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -191,8 +176,7 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
 
         const store = insertResult.rows[0];
 
-        // Step 2: Provision store using Helm (async, don't wait)
-        // Background job - updates DB when complete
+        // Provision store in the background — updates DB status when done
         HelmService.installStore({
             storeName: `store-${store.id}`,
             subdomain,
@@ -202,7 +186,6 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
         }).then(async ({ namespace, url }) => {
             console.log(`[Stores API] Store ${store.id} provisioned successfully at ${url}`);
 
-            // Update DB with URL and namespace
             await dbManager.executeQuery(
                 `UPDATE stores SET url = $1, namespace = $2, status = $3, updated_at = $4 WHERE id = $5`,
                 [url, namespace, StoreStatus.READY, new Date(), store.id]
@@ -210,14 +193,12 @@ router.post('/stores', createStoreRateLimiter, storeQuotaChecker, async (req: Re
         }).catch(async (error) => {
             console.error(`[Stores API] Failed to provision store ${store.id}:`, error);
 
-            // Mark store as FAILED
             await dbManager.executeQuery(
                 `UPDATE stores SET status = $1, updated_at = $2 WHERE id = $3`,
                 [StoreStatus.FAILED, new Date(), store.id]
             );
         });
 
-        // Immediately return PROVISIONING status
         res.status(201).json({
             store,
             message: 'Store provisioning initiated. Check status for updates.',
@@ -239,7 +220,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
     try {
         const { id } = req.params;
 
-        // Validate UUID
         if (!validator.isUUID(id)) {
             res.status(400).json({
                 error: 'INVALID_ID',
@@ -248,7 +228,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        // Validate request body
         const { error, value } = updateStoreSchema.validate(req.body);
         if (error) {
             res.status(400).json({
@@ -260,7 +239,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
 
         const updateData: UpdateStoreRequest = value;
 
-        // Sanitize input
         if (updateData.name) {
             updateData.name = sanitizeInput(updateData.name);
         }
@@ -270,7 +248,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
 
         const dbManager = getDatabaseManager();
 
-        // Build dynamic UPDATE query
         const updates: string[] = [];
         const params: unknown[] = [];
         let paramIndex = 1;
@@ -292,7 +269,6 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
         updates.push(`updated_at = $${paramIndex++}`);
         params.push(new Date());
 
-        // Add WHERE clause with optimistic locking
         params.push(id);
         params.push(updateData.version);
 
@@ -326,7 +302,10 @@ router.put('/stores/:id', async (req: Request, res: Response): Promise<void> => 
     }
 });
 
-// DELETE /stores/:id - Delete a store
+/**
+ * DELETE /api/stores/:id
+ * Delete a store — uninstalls Helm release, cleans up namespace, marks DB record decommissioned.
+ */
 router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
@@ -341,7 +320,7 @@ router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> 
 
         const dbManager = getDatabaseManager();
 
-        // Get store details first
+
         const storeResult = await dbManager.executeQuery(
             'SELECT * FROM stores WHERE id = $1 AND decommissioned_at IS NULL',
             [id]
@@ -357,18 +336,16 @@ router.delete('/stores/:id', async (req: Request, res: Response): Promise<void> 
 
         const store = storeResult.rows[0];
 
-        // Uninstall store using Helm (this properly cleans up release and namespace)
         const storeName = `store-${store.id}`;
         try {
             console.log(`[DELETE] Uninstalling Helm release: ${storeName}`);
             await HelmService.uninstallStore(storeName);
             console.log(`[DELETE] Helm release ${storeName} uninstalled successfully`);
         } catch (helmError) {
-            console.error(`[DELETE] Error uninstalling Helm release:`, helmError);
-            // Continue with database update even if uninstall fails
+            console.error(`[DELETE] Helm uninstall failed (continuing with DB cleanup):`, helmError);
         }
 
-        // Update database - mark as decommissioned
+
         const updateResult = await dbManager.executeQuery(
             'UPDATE stores SET decommissioned_at = NOW(), status = $1, version = version + 1 WHERE id = $2 RETURNING *',
             [StoreStatus.DECOMMISSIONED, id]

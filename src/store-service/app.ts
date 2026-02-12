@@ -4,9 +4,7 @@ import storesRouter from './routes/stores';
 import { AuditLogger } from '../shared/services/audit-logger';
 import { generalApiRateLimiter } from '../shared/middleware/rate-limiter.middleware';
 
-/**
- * StoreService - Main Express application for the Store Provisioning Platform
- */
+/** Express application for the Store Provisioning Platform. */
 class StoreService {
     public app: Express;
     private dbConfig: string | null = null;
@@ -16,24 +14,16 @@ class StoreService {
         this.setupMiddleware();
     }
 
-    /**
-     * Setup Express middleware
-     */
     private setupMiddleware(): void {
-        // Parse JSON bodies
         this.app.use(express.json());
-
-        // Parse URL-encoded bodies
         this.app.use(express.urlencoded({ extended: true }));
 
 
-        // Add request ID for tracing
         this.app.use((req: Request, _res: Response, next: NextFunction) => {
             req.headers['x-request-id'] = req.headers['x-request-id'] || Date.now().toString();
             next();
         });
 
-        // Request logging
         this.app.use((req: Request, _res: Response, next: NextFunction) => {
             console.info(`${req.method} ${req.path}`, {
                 requestId: req.headers['x-request-id'],
@@ -42,23 +32,18 @@ class StoreService {
             next();
         });
 
-        // Security Middleware
-        this.app.use(generalApiRateLimiter); // Apply rate limiting
-        this.app.use(AuditLogger.middleware()); // Enable audit logging
+        this.app.use(generalApiRateLimiter);
+        this.app.use(AuditLogger.middleware());
     }
 
-    /**
-     * Initialize the service by loading configuration from Vault
-     */
+    /** Load database configuration from Vault (falls back to env vars). */
     async initialize(): Promise<void> {
         try {
             console.log('Initializing Store Service...');
 
-            // Retrieve database configuration from Vault
             const dbConfig = await VaultService.readSecret('kv/data/database/primary');
             this.dbConfig = dbConfig.data.connectionString as string;
 
-            // Set environment variables for database connection
             if (this.dbConfig) {
                 process.env.DATABASE_URL = this.dbConfig;
             }
@@ -71,11 +56,7 @@ class StoreService {
         }
     }
 
-    /**
-     * Setup API routes
-     */
     setupRoutes(): void {
-        // Health check endpoint
         this.app.get('/health', (_req: Request, res: Response) => {
             res.status(200).json({
                 status: 'healthy',
@@ -84,7 +65,6 @@ class StoreService {
             });
         });
 
-        // Readiness check endpoint
         this.app.get('/ready', (_req: Request, res: Response) => {
             const isReady = this.dbConfig !== null;
             res.status(isReady ? 200 : 503).json({
@@ -93,11 +73,8 @@ class StoreService {
             });
         });
 
-
-        // API routes
         this.app.use('/api', storesRouter);
 
-        // Root endpoint - API hub
         this.app.get('/', (_req: Request, res: Response) => {
             const baseUrl = `http://localhost:${process.env.PORT || 3000}`;
             res.status(200).json({
@@ -121,7 +98,6 @@ class StoreService {
             });
         });
 
-        // 404 handler
         this.app.use((_req: Request, res: Response) => {
             res.status(404).json({
                 error: 'NOT_FOUND',
@@ -129,7 +105,6 @@ class StoreService {
             });
         });
 
-        // Error handler
         this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
             console.error('Unhandled error:', err);
             res.status(500).json({
@@ -139,9 +114,6 @@ class StoreService {
         });
     }
 
-    /**
-     * Start the Express server
-     */
     start(port = 3000): void {
         this.setupRoutes();
         this.app.listen(port, () => {
@@ -152,7 +124,6 @@ class StoreService {
     }
 }
 
-// Main execution
 const service = new StoreService();
 service
     .initialize()
