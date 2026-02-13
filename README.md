@@ -44,7 +44,6 @@ The Store Provisioning Platform automates the deployment of isolated WooCommerce
 | **Ingress** | NGINX Ingress Controller |
 | **Security** | RBAC, NetworkPolicies, rate limiting, input sanitization |
 
----
 
 ## Architecture
 
